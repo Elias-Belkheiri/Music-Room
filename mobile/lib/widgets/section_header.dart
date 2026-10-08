@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 
+/// Legacy section header — kept in sync with Acid Noir.
+/// Prefer [AcidSectionHeader] (widgets/acid/) for new screens.
 class SectionHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onSeeAll;
@@ -15,25 +17,23 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
+        Expanded(
+          child: Text(
+            title,
+            style: AppTheme.titleLg,
           ),
         ),
         if (onSeeAll != null)
-          TextButton(
-            onPressed: onSeeAll,
-            child: Text(
-              'See all',
-              style: TextStyle(
-                color: AppTheme.accent.withValues(alpha: 0.8),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+          GestureDetector(
+            onTap: onSeeAll,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Text(
+                'See all',
+                style: AppTheme.caption,
               ),
             ),
           ),

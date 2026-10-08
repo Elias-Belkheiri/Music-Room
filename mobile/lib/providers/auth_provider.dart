@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -25,6 +26,36 @@ class AuthProvider with ChangeNotifier {
   UserModel? _currentUser;
   String? _errorMessage;
   bool _isBusy = false; // true while an HTTP request is in-flight
+
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _googleAuthSub;
+  bool _isProcessingGoogleAuth = false;
+
+  AuthProvider() {
+    _initGoogleSignInListener();
+  }
+
+  void _initGoogleSignInListener() {
+    try {
+      _googleAuthSub = GoogleSignIn.instance.authenticationEvents.listen(
+        (event) async {
+          if (event is GoogleSignInAuthenticationEventSignIn) {
+            await _handleGoogleSignInSuccess(event.user);
+          }
+        },
+        onError: (error) {
+          debugPrint('Google Sign-In stream error: $error');
+        },
+      );
+    } catch (e) {
+      debugPrint('Could not initialize Google Sign-In listener: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _googleAuthSub?.cancel();
+    super.dispose();
+  }
 
   // ── Getters ───────────────────────────────────────────────────────────
   AuthStatus get authStatus => _authStatus;
@@ -282,36 +313,98 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Google Sign-In ────────────────────────────────────────────────────
-  /// Launches the Google account picker, then calls POST /auth/google.
-  /// On success, persists session and navigates to HomeScreen.
-  Future<bool> signInWithGoogle() async {
+  // ── Google Sign-In Helpers & Initialization ───────────────────────────
+  static const String defaultWebClientId =
+      '469783669296-jmg77fa22j04dnik6mrambtc26qccc14.apps.googleusercontent.com';
+  static const String defaultIosClientId =
+      '469783669296-vrfmrpagvj6tlbijel1olsr3kdl9q1t2.apps.googleusercontent.com';
+
+  static String _readEnv(String key) {
+    try {
+      if (dotenv.isInitialized) {
+        return dotenv.env[key]?.trim() ?? '';
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  static String get effectiveWebClientId {
+    final fromWeb = _readEnv('GOOGLE_WEB_CLIENT_ID');
+    if (fromWeb.isNotEmpty &&
+        fromWeb != 'default-web-client-id' &&
+        !fromWeb.contains('your-google-web-client-id')) {
+      return fromWeb;
+    }
+    final fromClient = _readEnv('GOOGLE_CLIENT_ID').isNotEmpty
+        ? _readEnv('GOOGLE_CLIENT_ID')
+        : _readEnv('CLIENT_ID');
+    if (fromClient.isNotEmpty &&
+        fromClient != 'default-client-id' &&
+        !fromClient.contains('your-google-web-client-id')) {
+      return fromClient;
+    }
+    return defaultWebClientId;
+  }
+
+  static String? get effectiveIosClientId {
+    final fromIos = _readEnv('GOOGLE_IOS_CLIENT_ID');
+    if (fromIos.isNotEmpty &&
+        fromIos != 'default-ios-client-id' &&
+        !fromIos.contains('your-google-ios-client-id')) {
+      return fromIos;
+    }
+    return defaultIosClientId;
+  }
+
+  /// Explicitly initialize GoogleSignIn based on the running platform.
+  static Future<void> initializeGoogleSignIn() async {
+    try {
+      final webId = effectiveWebClientId;
+      final iosId = effectiveIosClientId;
+
+      // On iOS, Google OAuth strictly requires the serverClientId (audience)
+      // to belong to the exact same Google Cloud project as the iOS clientId.
+      String serverClientId = webId;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS && iosId != null) {
+        final iosProject = iosId.split('-').first;
+        final webProject = webId.split('-').first;
+        if (iosProject != webProject) {
+          debugPrint(
+            'GoogleSignIn project mismatch: iOS=$iosProject, Web=$webProject. '
+            'Falling back to default matching webClientId.',
+          );
+          serverClientId = defaultWebClientId;
+        }
+      }
+
+      await GoogleSignIn.instance.initialize(
+        clientId: kIsWeb
+            ? webId
+            : (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+                ? iosId
+                : null),
+        // serverClientId is NOT supported on Web (plugin asserts on it).
+        serverClientId: kIsWeb ? null : serverClientId,
+      );
+    } catch (e) {
+      debugPrint('GoogleSignIn.initialize failed: $e');
+    }
+  }
+
+  Future<bool> _handleGoogleSignInSuccess(GoogleSignInAccount user) async {
+    if (_isProcessingGoogleAuth || _authStatus == AuthStatus.authenticated) {
+      return true;
+    }
+    _isProcessingGoogleAuth = true;
     _errorMessage = null;
     _isBusy = true;
     notifyListeners();
 
     try {
-      final googleSignIn = GoogleSignIn.instance;
-      await googleSignIn.initialize(
-        // iOS: uses clientId (no GoogleService-Info.plist without Firebase)
-        clientId: dotenv.env['GOOGLE_IOS_CLIENT_ID'],
-        // Android: uses serverClientId (web client ID) to obtain an idToken
-        serverClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'],
-      );
-
-      final googleUser = await googleSignIn.authenticate();
-
-      if (googleUser == null) {
-        // User cancelled the picker
-        _isBusy = false;
-        notifyListeners();
-        return false;
-      }
-
-      final googleAuth = await googleUser.authentication;
+      final googleAuth = await user.authentication;
       final idToken = googleAuth.idToken;
       if (idToken == null || idToken.isEmpty) {
-        throw const AuthException('Google sign-in failed');
+        throw const AuthException('Google sign-in failed: No ID token returned');
       }
 
       final response = await _authService.googleSignIn(
@@ -349,7 +442,63 @@ class AuthProvider with ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('Google Sign-In unexpected error: $e');
-      _errorMessage = 'Google sign-in failed. Please try again.';
+      _errorMessage = 'Google sign-in failed: $e';
+      _isBusy = false;
+      notifyListeners();
+      return false;
+    } finally {
+      _isProcessingGoogleAuth = false;
+    }
+  }
+
+  // ── Google Sign-In ────────────────────────────────────────────────────
+  /// Launches interactive Google authentication if supported.
+  /// On success, persists session and updates authStatus.
+  Future<bool> signInWithGoogle() async {
+    _errorMessage = null;
+    _isBusy = true;
+    notifyListeners();
+
+    try {
+      await initializeGoogleSignIn();
+
+      if (!GoogleSignIn.instance.supportsAuthenticate()) {
+        if (kIsWeb) {
+          // On web, `authenticate()` is unsupported — the GIS renderButton
+          // handles the click and completes via authenticationEvents.
+          // Fire a One Tap prompt as fallback for taps landing outside the
+          // iframe, and return a visible hint instead of failing silently
+          // (auth_screen only shows a SnackBar when errorMessage != null).
+          try {
+            await GoogleSignIn.instance.attemptLightweightAuthentication();
+          } catch (_) {}
+          _isBusy = false;
+          _errorMessage =
+              'Opening Google sign-in… if nothing pops up, allow popups / third-party cookies and click the G button again.';
+          notifyListeners();
+          return false;
+        }
+      }
+
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      return await _handleGoogleSignInSuccess(googleUser);
+    } on AuthException catch (e) {
+      _errorMessage = _mapErrorMessage(e.message);
+      _isBusy = false;
+      notifyListeners();
+      return false;
+    } on PlatformException catch (e) {
+      _errorMessage = _mapGoogleSignInPlatformError(e);
+      debugPrint(
+        'Google Sign-In platform error: '
+        'code=${e.code}, message=${e.message}, details=${e.details}',
+      );
+      _isBusy = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      debugPrint('Google Sign-In unexpected error: $e');
+      _errorMessage = 'Google sign-in failed: $e';
       _isBusy = false;
       notifyListeners();
       return false;
@@ -362,6 +511,10 @@ class AuthProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userKey);
 
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
+
     _currentUser = null;
     _authStatus = AuthStatus.unauthenticated;
     _errorMessage = null;
@@ -372,14 +525,14 @@ class AuthProvider with ChangeNotifier {
   /// Uses the stored refresh token to get a new access token.
   /// If it fails, logs the user out.
   Future<bool> refreshTokens() async {
-    if (_currentUser == null || _currentUser!.refreshToken == null) {
+    if (_currentUser == null || _currentUser!.refreshToken.isEmpty) {
       await logout();
       return false;
     }
 
     try {
       final response = await _authService.refreshToken(
-        refreshToken: _currentUser!.refreshToken!,
+        refreshToken: _currentUser!.refreshToken,
       );
 
       final newAccessToken = response['accessToken'];

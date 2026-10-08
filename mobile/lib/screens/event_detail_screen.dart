@@ -200,10 +200,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               duration: Duration(seconds: 2),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.accent,
               content: Text(
                 'Synchronized with live room playback!',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.onAccent),
               ),
             ),
           );
@@ -466,10 +468,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       duration: const Duration(seconds: 2),
-                      backgroundColor: Colors.green,
+                      backgroundColor: AppTheme.accent,
                       content: Text(
                         'Live Track: "$title" by $artistName',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.onAccent),
                       ),
                     ),
                   );
@@ -551,6 +555,34 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  Future<void> _removeTrack(String entryId) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.currentUser?.accessToken;
+      if (token == null) return;
+      await _eventService.removeTrack(widget.eventId, entryId, token);
+      // Stop local playback if we removed the currently playing track,
+      // otherwise just_audio keeps the failed source loaded.
+      final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+      await audioProvider.stop();
+      await _refreshPlaylist();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Removed unplayable track from the queue.'),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to remove track: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to remove track: $e')));
+      }
+    }
+  }
+
   @override
   void dispose() {
     _stompClient?.deactivate();
@@ -615,7 +647,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   Expanded(
                     child: _loadingCollaborators && _collaborators.isEmpty
                         ? const Center(
-                            child: CircularProgressIndicator(color: Colors.green),
+                            child: CircularProgressIndicator(color: AppTheme.accent),
                           )
                         : _collaborators.isEmpty
                             ? const Center(
@@ -653,7 +685,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                       role.toUpperCase(),
                                       style: TextStyle(
                                         color: role == 'owner'
-                                            ? Colors.greenAccent
+                                            ? AppTheme.accent
                                             : (role == 'editor'
                                                 ? Colors.blueAccent
                                                 : Colors.grey[400]),
@@ -720,7 +752,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppTheme.background,
-        body: Center(child: CircularProgressIndicator(color: Colors.green)),
+        body: Center(child: CircularProgressIndicator(color: AppTheme.accent)),
       );
     }
 
@@ -827,12 +859,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: _isWsConnected
-                                ? Colors.green.withOpacity(0.2)
+                                ? AppTheme.accent.withOpacity(0.2)
                                 : Colors.orange.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: _isWsConnected
-                                  ? Colors.green
+                                  ? AppTheme.accent
                                   : Colors.orange,
                               width: 1,
                             ),
@@ -845,7 +877,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 height: 8,
                                 decoration: BoxDecoration(
                                   color: _isWsConnected
-                                      ? Colors.green
+                                      ? AppTheme.accent
                                       : Colors.orange,
                                   shape: BoxShape.circle,
                                 ),
@@ -855,7 +887,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 _isWsConnected ? 'LIVE' : 'CONNECTING',
                                 style: TextStyle(
                                   color: _isWsConnected
-                                      ? Colors.green
+                                      ? AppTheme.accent
                                       : Colors.orange,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -914,8 +946,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 color:
                                     (_userRole == 'editor' ||
                                         _userRole == 'owner')
-                                    ? Colors.greenAccent.withOpacity(0.2)
-                                    : Colors.purple.withOpacity(0.2),
+                                    ? AppTheme.accent.withOpacity(0.2)
+                                    : AppTheme.accent.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -924,8 +956,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   color:
                                       (_userRole == 'editor' ||
                                           _userRole == 'owner')
-                                      ? Colors.greenAccent
-                                      : Colors.purpleAccent,
+                                      ? AppTheme.accent
+                                      : AppTheme.accent,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
@@ -1069,8 +1101,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   Expanded(
                                     child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: AppTheme.accent,
+                                        foregroundColor: AppTheme.onAccent,
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 14,
                                         ),
@@ -1122,12 +1154,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               decoration: BoxDecoration(
                                 color: _tracks.length >= 15
                                     ? Colors.redAccent.withOpacity(0.2)
-                                    : Colors.green.withOpacity(0.2),
+                                    : AppTheme.accent.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: _tracks.length >= 15
                                       ? Colors.redAccent
-                                      : Colors.green,
+                                      : AppTheme.accent,
                                   width: 1,
                                 ),
                               ),
@@ -1136,7 +1168,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 style: TextStyle(
                                   color: _tracks.length >= 15
                                       ? Colors.redAccent
-                                      : Colors.greenAccent,
+                                      : AppTheme.accent,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1145,6 +1177,44 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
+                        Consumer<AudioProvider>(
+                          builder: (context, ap, _) {
+                            if (ap.playbackError == null) {
+                              return const SizedBox.shrink();
+                            }
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.redAccent.withOpacity(0.5),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    color: Colors.redAccent,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      ap.playbackError!,
+                                      style: const TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -1257,14 +1327,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                     child: isPlaying
                                         ? const Icon(
                                             Icons.volume_up_rounded,
-                                            color: Colors.greenAccent,
+                                            color: AppTheme.accent,
                                             size: 18,
                                           )
                                         : Text(
                                             '${index + 1}',
                                             style: TextStyle(
                                               color: index == 0
-                                                  ? Colors.greenAccent
+                                                  ? AppTheme.accent
                                                   : Colors.white70,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
@@ -1316,7 +1386,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                           title,
                                           style: TextStyle(
                                             color: isPlaying
-                                                ? Colors.greenAccent
+                                                ? AppTheme.accent
                                                 : Colors.white,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
@@ -1357,7 +1427,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                               valueColor:
                                                   const AlwaysStoppedAnimation<
                                                     Color
-                                                  >(Colors.greenAccent),
+                                                  >(AppTheme.accent),
                                               minHeight: 4,
                                             ),
                                           ),
@@ -1392,7 +1462,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                           Text(
                                             'Suggested by $suggestedByName',
                                             style: const TextStyle(
-                                              color: Colors.greenAccent,
+                                              color: AppTheme.accent,
                                               fontSize: 10,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -1421,6 +1491,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   ),
 
                                   // Voting Widget (Only visible from position 2 and above, i.e., index > 0)
+                                  // Owners/editors can remove the now-playing track (index 0),
+                                  // which is the recovery path when a restricted/unstreamable
+                                  // Audius track got queued before the gated-track filter.
+                                  if (index == 0 &&
+                                      (_userRole == 'owner' ||
+                                          _userRole == 'editor'))
+                                    Consumer<AudioProvider>(
+                                      builder: (context, ap, _) {
+                                        if (ap.playbackError == null) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return IconButton(
+                                          tooltip: 'Remove unplayable track',
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            size: 20,
+                                            color: Colors.redAccent,
+                                          ),
+                                          onPressed: () =>
+                                              _removeTrack(entryId),
+                                        );
+                                      },
+                                    ),
                                   if (index > 0)
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -1446,7 +1539,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: voteCount > 0
-                                                ? Colors.green.withOpacity(0.2)
+                                                ? AppTheme.accent.withOpacity(0.2)
                                                 : (voteCount < 0
                                                       ? Colors.red.withOpacity(
                                                           0.2,
@@ -1463,7 +1556,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                                 : '$voteCount',
                                             style: TextStyle(
                                               color: voteCount > 0
-                                                  ? Colors.greenAccent
+                                                  ? AppTheme.accent
                                                   : (voteCount < 0
                                                         ? Colors.redAccent
                                                         : Colors.white70),
@@ -1479,7 +1572,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                             Icons.arrow_upward_rounded,
                                             size: 20,
                                             color: hasUpvoted
-                                                ? Colors.greenAccent
+                                                ? AppTheme.accent
                                                 : Colors.white70,
                                           ),
                                           onPressed: () =>
@@ -1694,6 +1787,46 @@ class _EventAddTrackModalState extends State<_EventAddTrackModal> {
       final token = authProvider.currentUser?.accessToken;
       if (token == null) throw Exception('Not authenticated');
 
+      if (!track.isStreamable || track.isStreamGated) {
+        if (mounted) {
+          setState(() {
+            _isSuggesting = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text(
+                'This track is restricted on Audius and cannot be played. Please pick another one.',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      final streamable =
+          await widget.audiusService.verifyTrackStreamable(track);
+      if (!streamable) {
+        if (mounted) {
+          setState(() {
+            _isSuggesting = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text(
+                'This track is not streamable on Audius (403). Please pick another one.',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
       await widget.eventService.suggestTrack(widget.eventId, track, token);
 
       if (mounted) {
@@ -1701,11 +1834,11 @@ class _EventAddTrackModalState extends State<_EventAddTrackModal> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.accent,
             content: Text(
               'Successfully suggested "${track.title}"!',
               style: const TextStyle(
-                color: Colors.white,
+                color: AppTheme.onAccent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1807,7 +1940,7 @@ class _EventAddTrackModalState extends State<_EventAddTrackModal> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                CircularProgressIndicator(color: Colors.green),
+                                CircularProgressIndicator(color: AppTheme.accent),
                                 SizedBox(height: 12),
                                 Text(
                                   'Loading trending suggestions...',
@@ -1855,7 +1988,7 @@ class _EventAddTrackModalState extends State<_EventAddTrackModal> {
                           ))
                   : _isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: Colors.green),
+                      child: CircularProgressIndicator(color: AppTheme.accent),
                     )
                   : (_searchResults.isEmpty
                         ? const Center(
@@ -1917,13 +2050,13 @@ class _EventAddTrackModalState extends State<_EventAddTrackModal> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.green,
+                    color: AppTheme.accent,
                   ),
                 )
               : IconButton(
                   icon: const Icon(
                     Icons.add_circle_outline,
-                    color: Colors.greenAccent,
+                    color: AppTheme.accent,
                   ),
                   onPressed: () => _suggestTrack(track),
                 ),

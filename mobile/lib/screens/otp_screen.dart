@@ -9,7 +9,11 @@ class OtpScreen extends StatefulWidget {
   final AppRouterDelegate routerDelegate;
   final String email;
 
-  const OtpScreen({super.key, required this.routerDelegate, required this.email});
+  const OtpScreen({
+    super.key,
+    required this.routerDelegate,
+    required this.email,
+  });
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -38,9 +42,7 @@ class _OtpScreenState extends State<OtpScreen> {
     );
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email verified. Please log in.'),
-        ),
+        const SnackBar(content: Text('Email verified. Please log in.')),
       );
       widget.routerDelegate.navigateToLogin();
     }
@@ -55,7 +57,10 @@ class _OtpScreenState extends State<OtpScreen> {
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('A new OTP has been sent to ${widget.email}'),
+          content: Text(
+            'A new OTP has been sent to ${widget.email}',
+            style: const TextStyle(color: AppTheme.onAccent),
+          ),
           backgroundColor: AppTheme.accent,
         ),
       );

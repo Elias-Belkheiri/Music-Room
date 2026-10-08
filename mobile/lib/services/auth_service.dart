@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -54,6 +55,14 @@ Future<Map<String, String>> _getDeviceInfo() async {
   final deviceInfo = DeviceInfoPlugin();
   final packageInfo = await PackageInfo.fromPlatform();
   final appVersion = packageInfo.version; // e.g. "1.2.3"
+
+  if (kIsWeb) {
+    return {
+      'deviceName': 'Web Browser',
+      'platform': 'Web',
+      'appVersion': appVersion,
+    };
+  }
 
   if (Platform.isAndroid) {
     final android = await deviceInfo.androidInfo;

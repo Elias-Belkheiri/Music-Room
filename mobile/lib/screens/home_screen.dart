@@ -9,12 +9,31 @@ import '../models/track_model.dart';
 import '../providers/user_profile_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/playlist_provider.dart';
+import '../providers/subscription_provider.dart';
 import '../config/app_theme.dart';
 import 'create_event_screen.dart';
 import 'profile/profile_screen.dart';
 import 'playlist_detail_screen.dart';
 import 'event_detail_screen.dart';
+import 'nearby_events_screen.dart';
+import 'search_screen.dart';
 import '../providers/audio_provider.dart';
+import '../widgets/acid/acid_section_header.dart';
+import '../widgets/acid/collection_card.dart';
+import '../widgets/acid/discover_banner.dart';
+import '../widgets/acid/feature_card.dart';
+import '../widgets/acid/search_pill.dart';
+import '../widgets/acid/track_row.dart';
+import '../widgets/add_to_playlist_modal.dart';
+
+String formatTrackDuration(Track t) {
+  final ms = t.durationMs;
+  if (ms == null || ms <= 0) return '--:--';
+  final totalSec = (ms / 1000).round();
+  final m = totalSec ~/ 60;
+  final s = (totalSec % 60).toString().padLeft(2, '0');
+  return '$m:$s';
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,6 +73,10 @@ class HomeScreenState extends State<HomeScreen> {
           context,
           listen: false,
         ).loadPlaylists(authProvider.currentUser);
+        Provider.of<SubscriptionProvider>(
+          context,
+          listen: false,
+        ).fetchStatus(token);
         _fetchEvents(token);
         _connectEventsWebSocket(token);
       } else {
@@ -72,7 +95,8 @@ class HomeScreenState extends State<HomeScreen> {
     await _fetchTracks(showLoadingSpinner: showLoadingSpinner);
   }
 
-  Future<void> _fetchEvents(String token, {bool showLoadingSpinner = true}) async {
+  Future<void> _fetchEvents(String token,
+      {bool showLoadingSpinner = true}) async {
     try {
       if (showLoadingSpinner) {
         setState(() {
@@ -92,7 +116,9 @@ class HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      if (e.toString().contains('401') || e.toString().contains('403') || e.toString().contains('404')) {
+      if (e.toString().contains('401') ||
+          e.toString().contains('403') ||
+          e.toString().contains('404')) {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         final success = await authProvider.refreshTokens();
         if (success) {
@@ -216,7 +242,8 @@ class HomeScreenState extends State<HomeScreen> {
           );
 
           // Subscribe to personal events topic
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          final authProvider =
+              Provider.of<AuthProvider>(context, listen: false);
           final currentUserId = authProvider.currentUser?.id;
           if (currentUserId != null) {
             final personalTopic = '/topic/user/$currentUserId/events';
@@ -262,7 +289,6 @@ class HomeScreenState extends State<HomeScreen> {
     _eventsStompClient?.activate();
   }
 
-
   Future<void> _fetchTracks({bool showLoadingSpinner = true}) async {
     try {
       if (showLoadingSpinner) {
@@ -299,17 +325,19 @@ class HomeScreenState extends State<HomeScreen> {
   Future<void> handleRefresh() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.currentUser?.accessToken;
-    
+
     final List<Future<dynamic>> futures = [
       _fetchData(showLoadingSpinner: false),
     ];
-    
+
     if (token != null) {
-      futures.add(Provider.of<UserProfileProvider>(context, listen: false).fetchProfile(token));
-      futures.add(Provider.of<PlaylistProvider>(context, listen: false).loadPlaylists(authProvider.currentUser));
+      futures.add(Provider.of<UserProfileProvider>(context, listen: false)
+          .fetchProfile(token));
+      futures.add(Provider.of<PlaylistProvider>(context, listen: false)
+          .loadPlaylists(authProvider.currentUser));
       futures.add(_fetchEvents(token, showLoadingSpinner: false));
     }
-    
+
     await Future.wait(futures);
   }
 
@@ -319,7 +347,83 @@ class HomeScreenState extends State<HomeScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Acid Noir Discover UI (redesigned; data logic above is unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _HomeContent extends StatelessWidget {
+  static const _genres = ['Trap', 'Pop', 'Hip-Hop', 'RnB'];
+
+  /// Play [track] with user-visible feedback when it can't be streamed.
+  /// Never fails silently — shows a SnackBar instead of doing nothing.
+  void _playTrack(BuildContext context, Track track,
+      {required List<Track> playlist, required int index}) {
+    if (track.audioUrl == null || track.audioUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This track is not currently streamable.'),
+        ),
+      );
+      return;
+    }
+    Provider.of<AudioProvider>(context, listen: false)
+        .playTrack(track, playlist: playlist, index: index);
+  }
+
+  /// Bottom sheet for the Discover banner's "..." button.
+  void _showDiscoverOptions(BuildContext context, HomeScreenState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.search_rounded,
+                  color: AppTheme.textPrimary),
+              title: const Text('Discover music',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const SearchScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.shuffle_rounded,
+                  color: AppTheme.textPrimary),
+              title: const Text('Shuffle play trending',
+                  style: TextStyle(color: Colors.white)),
+              enabled: state.trendingTracks.isNotEmpty,
+              onTap: () {
+                Navigator.pop(context);
+                final shuffled =
+                    List<Track>.of(state.trendingTracks)..shuffle();
+                _playTrack(context, shuffled.first,
+                    playlist: shuffled, index: 0);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.findAncestorStateOfType<HomeScreenState>();
@@ -328,692 +432,537 @@ class _HomeContent extends StatelessWidget {
     return Consumer<PlaylistProvider>(
       builder: (context, playlistProvider, child) {
         final playlists = playlistProvider.playlists;
-        final displayPlaylists = playlists.take(6).toList();
+        final railTracks = state.trendingTracks.take(4).toList();
 
         return Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: AppTheme.background,
           body: RefreshIndicator(
-            color: Colors.green,
-            backgroundColor: AppTheme.background,
+            color: AppTheme.accent,
+            backgroundColor: AppTheme.surface,
             onRefresh: state.handleRefresh,
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
               slivers: [
-              SliverAppBar(
-                floating: true,
-                pinned: true,
-                backgroundColor: AppTheme.background,
-                elevation: 0,
-                toolbarHeight: 80,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
+                // ── Greeting ──────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 16),
                     child: Row(
                       children: [
                         Consumer<UserProfileProvider>(
                           builder: (context, profileProvider, child) {
                             final profile = profileProvider.profile;
                             final avatarUrl = profile?.avatarUrl;
-
+                            final hasAvatar = avatarUrl != null &&
+                                avatarUrl.isNotEmpty &&
+                                !avatarUrl.contains(
+                                    'photo-1535713875002-d1d0cf377fde');
                             return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const ProfileScreen(),
-                                  ),
-                                );
-                              },
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ProfileScreen(),
+                                ),
+                              ),
                               child: CircleAvatar(
-                                radius: 18,
-                                backgroundColor: Colors.grey[800],
-                                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty && !avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
-                                    ? NetworkImage(avatarUrl)
-                                    : null,
-                                child: avatarUrl == null || avatarUrl.isEmpty || avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
-                                    ? const Icon(
-                                        Icons.person,
-                                        size: 18,
-                                        color: Colors.white70,
-                                      )
-                                    : null,
+                                radius: 22,
+                                backgroundColor: AppTheme.surfaceRaised,
+                                backgroundImage:
+                                    hasAvatar ? NetworkImage(avatarUrl) : null,
+                                child: hasAvatar
+                                    ? null
+                                    : const Icon(Icons.person_rounded,
+                                        size: 22,
+                                        color: AppTheme.textSecondary),
                               ),
                             );
                           },
                         ),
-                        const SizedBox(width: 16),
-                        const Text(
-                          'Home',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Good evening',
+                                  style: AppTheme.caption),
+                              Consumer<UserProfileProvider>(
+                                builder: (context, p, _) => Text(
+                                  p.profile?.displayName ?? 'Music lover',
+                                  style: AppTheme.titleMd,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        if (state._isEventsWsConnected)
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppTheme.accent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── Search pill → Recommended ─────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SearchPill(
+                      readOnly: true,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SearchScreen()),
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+                // ── Discover banner + overlapping genre cards ─────────────
+                // The Stack is explicitly 372px tall (cards start at 132
+                // and are 240 tall) so the overflow doesn't cover content
+                // below — Stack alone would only measure the 250px banner.
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SizedBox(
+                      height: 372,
+                      child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        DiscoverBanner(
+                          sideLabel: 'Your playlist',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const SearchScreen()),
+                          ),
+                          onMore: () =>
+                              _showDiscoverOptions(context, state),
+                        ),
+                        Positioned(
+                          top: 132,
+                          left: 44,
+                          right: -20,
+                          height: 240,
+                          child: state.isLoadingTracks
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                      color: AppTheme.onAccent),
+                                )
+                              : ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  padding:
+                                      const EdgeInsets.only(right: 20),
+                                  itemCount: _genres.length,
+                                  itemBuilder: (context, i) {
+                                    final track = state
+                                            .trendingTracks.isNotEmpty
+                                        ? state.trendingTracks[
+                                            i % state.trendingTracks.length]
+                                        : null;
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(right: 12),
+                                      child: FeatureCard(
+                                        title: _genres[i],
+                                        imageUrl: track?.imageUrl,
+                                        width: 190,
+                                        height: 240,
+                                        onTap: () {
+                                          if (track != null) {
+                                            _playTrack(context, track,
+                                                playlist:
+                                                    state.trendingTracks,
+                                                index: i %
+                                                    state.trendingTracks
+                                                        .length);
+                                          } else {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                    'Tracks are still loading — try again in a moment.'),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Spacer below the overlapping cards
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                // ── Your playlist rail (track rows) ───────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                    child: AcidSectionHeader(
+                      title: 'Your playlist',
+                      onSeeAll: playlists.isNotEmpty
+                          ? () {
+                              final first = playlists.first;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PlaylistDetailScreen(
+                                    playlistId: first.id,
+                                    initialPlaylist: first,
+                                    useBackend: true,
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
+                    ),
+                  ),
+                ),
+                if (state.isLoadingTracks)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                            color: AppTheme.accent),
+                      ),
+                    ),
+                  )
+                else if (railTracks.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
+                      child: Text('Pull to refresh to load tracks.',
+                          style: AppTheme.caption),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, i) {
+                          final t = railTracks[i];
+                          return TrackRow(
+                            title: t.title,
+                            artist: t.artistName,
+                            imageUrl: t.imageUrl,
+                            duration: formatTrackDuration(t),
+                            onTap: () => _playTrack(context, t,
+                                playlist: state.trendingTracks,
+                                index: state.trendingTracks.indexOf(t)),
+                            onMore: () => showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) =>
+                                  AddToPlaylistModal(track: t),
+                            ),
+                          );
+                        },
+                        childCount: railTracks.length,
+                      ),
+                    ),
+                  ),
+
+                // ── Live rooms (events) ───────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Live rooms', style: AppTheme.titleLg),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const NearbyEventsScreen()),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surfaceRaised,
+                                  borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusPill),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.bluetooth_searching_rounded,
+                                      size: 14,
+                                      color: AppTheme.accent,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Radar',
+                                      style: AppTheme.caption.copyWith(
+                                        color: AppTheme.accent,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const CreateEventScreen()),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Text('Create', style: AppTheme.caption),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-              if (displayPlaylists.isNotEmpty)
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final playlist = displayPlaylists[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PlaylistDetailScreen(
-                                  playlistId: playlist.id,
-                                  initialPlaylist: playlist,
-                                  useBackend: true,
-                                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 240,
+                    child: state.isLoadingEvents
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: AppTheme.accent),
+                          )
+                        : state.eventError != null
+                            ? Center(
+                                child: Text('Could not load rooms.',
+                                    style: AppTheme.caption),
+                              )
+                            : ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20),
+                                itemCount: state.events.length + 1,
+                                itemBuilder: (context, index) {
+                                  if (index == state.events.length) {
+                                    return _CreateRoomCard(
+                                        onTap: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const CreateEventScreen()),
+                                            ));
+                                  }
+                                  final event = state.events[index];
+                                  final String? firstCover =
+                                      event['firstTrackCoverUrl'];
+                                  final String? cover =
+                                      event['coverUrl'];
+                                  final imageUrl = (firstCover != null &&
+                                          firstCover.isNotEmpty)
+                                      ? firstCover
+                                      : cover;
+                                  final isLive =
+                                      event['playing'] == true;
+                                  final count =
+                                      event['participantCount'] ?? 1;
+                                  return Padding(
+                                    padding:
+                                        const EdgeInsets.only(right: 12),
+                                    child: FeatureCard(
+                                      title:
+                                          event['name'] ?? 'Unnamed room',
+                                      imageUrl: imageUrl,
+                                      sideLabel: '$count listening',
+                                      width: 190,
+                                      height: 240,
+                                      useAccentPlay: isLive,
+                                      onTap: () =>
+                                          _openEvent(context, state, event),
+                                      onPlay: () =>
+                                          _openEvent(context, state, event),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(4),
-                                    bottomLeft: Radius.circular(4),
-                                  ),
-                                  child: playlist.imageUrl != null && playlist.imageUrl!.isNotEmpty
-                                      ? Image.network(
-                                          playlist.imageUrl!,
-                                          width: 55,
-                                          height: 55,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => Container(
-                                            width: 55,
-                                            height: 55,
-                                            color: Colors.grey[800],
-                                            child: const Icon(Icons.music_note, color: Colors.white54),
-                                          ),
-                                        )
-                                      : Container(
-                                          width: 55,
-                                          height: 55,
-                                          color: Colors.grey[800],
-                                          child: const Icon(Icons.music_note, color: Colors.white54),
-                                        ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          playlist.title,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      if (playlist.visibility == 'private') ...[
-                                        const SizedBox(width: 4),
-                                        const Padding(
-                                          padding: EdgeInsets.only(right: 8.0),
-                                          child: Icon(
-                                            Icons.lock_outline_rounded,
-                                            color: Colors.redAccent,
-                                            size: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                      childCount: displayPlaylists.length,
-                    ),
                   ),
                 ),
 
-          _buildEventsSectionHeader(context),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 180,
-              child: state.isLoadingEvents
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Colors.green),
-                    )
-                  : state.eventError != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Error loading events',
-                            style: TextStyle(color: Colors.grey[400]),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () {
-                              final token = Provider.of<AuthProvider>(context, listen: false).currentUser?.accessToken;
-                              if (token != null) state._fetchEvents(token);
-                            },
-                            icon: const Icon(Icons.refresh, color: Colors.green, size: 18),
-                            label: const Text('Retry', style: TextStyle(color: Colors.green)),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: state.events.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == state.events.length) {
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const CreateEventScreen(),
-                                ),
-                              ).then((_) {
-                                final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                                final token = authProvider.currentUser?.accessToken;
-                                if (token != null) {
-                                  state._fetchEvents(token);
-                                }
-                              });
-                            },
-                            child: Container(
-                              width: 140,
-                              margin: const EdgeInsets.only(right: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[900],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.green.withValues(alpha: 0.3),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.add,
-                                      color: Colors.green,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    "Create Event",
-                                    style: TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Host a live room",
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        final event = state.events[index];
-                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-                        // Decide on cover image: first music in the room or event cover
-                        final String? firstTrackCover = event['firstTrackCoverUrl'];
-                        final String? eventCover = event['coverUrl'];
-                        final String? imageUrl = (firstTrackCover != null && firstTrackCover.isNotEmpty)
-                            ? firstTrackCover
-                            : (eventCover != null && eventCover.isNotEmpty ? eventCover : null);
-
-                        final int participantCount = event['participantCount'] ?? 1;
-                        final bool isLive = event['playing'] == true;
-
-                        return GestureDetector(
-                          onTap: () {
-                            if (isLive) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  duration: const Duration(seconds: 2),
-                                  backgroundColor: Colors.red[700],
-                                  content: const Row(
-                                    children: [
-                                      Icon(Icons.lock, color: Colors.white, size: 18),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'This event is already live and in session. You cannot join now.',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                // ── Trending now ──────────────────────────────────────────
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, 24, 20, 12),
+                    child: AcidSectionHeader(title: 'Trending now'),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 214,
+                    child: state.isLoadingTracks
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: AppTheme.accent),
+                          )
+                        : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20),
+                            itemCount: state.trendingTracks.length,
+                            itemBuilder: (context, i) {
+                              final t = state.trendingTracks[i];
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(right: 14),
+                                child: CollectionCard(
+                                  title: t.title,
+                                  artist: t.artistName,
+                                  imageUrl: t.imageUrl,
+                                  onTap: () => _playTrack(context, t,
+                                      playlist: state.trendingTracks,
+                                      index: i),
                                 ),
                               );
-                              return;
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => EventDetailScreen(
-                                  eventId: event['id'],
-                                  eventName: event['name'] ?? 'Event',
-                                ),
-                              ),
-                            ).then((_) {
-                              final token = authProvider.currentUser?.accessToken;
-                              if (token != null) {
-                                state._fetchEvents(token);
-                              }
-                            });
-                          },
-                          child: Container(
-                            width: 140,
-                            margin: const EdgeInsets.only(right: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isLive
-                                    ? Colors.red.withValues(alpha: 0.4)
-                                    : Colors.green.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: Stack(
-                                      fit: StackFit.expand,
-                                      children: [
-                                        if (imageUrl != null && imageUrl.startsWith('http'))
-                                          Image.network(
-                                            imageUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              return Container(
-                                                decoration: const BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [Colors.green, Colors.black87],
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                  ),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.music_note,
-                                                  color: Colors.white70,
-                                                  size: 32,
-                                                ),
-                                              );
-                                            },
-                                          )
-                                        else
-                                          Container(
-                                            decoration: const BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [Colors.green, Colors.black87],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
-                                            ),
-                                            child: const Icon(
-                                              Icons.event,
-                                              color: Colors.white70,
-                                              size: 32,
-                                            ),
-                                          ),
-                                        // Live / Open status badge (top-left)
-                                        Positioned(
-                                          top: 6,
-                                          left: 6,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: isLive
-                                                  ? Colors.red.withValues(alpha: 0.85)
-                                                  : Colors.green.withValues(alpha: 0.85),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Container(
-                                                  width: 6,
-                                                  height: 6,
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    shape: BoxShape.circle,
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.white.withValues(alpha: 0.6),
-                                                        blurRadius: 3,
-                                                        spreadRadius: 1,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  isLive ? 'LIVE' : 'OPEN',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.w800,
-                                                    letterSpacing: 0.5,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        // Participant Count Badge Overlay (top-right)
-                                        Positioned(
-                                          top: 6,
-                                          right: 6,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withValues(alpha: 0.6),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  Icons.people,
-                                                  color: Colors.green,
-                                                  size: 10,
-                                                ),
-                                                const SizedBox(width: 3),
-                                                Text(
-                                                  '$participantCount',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        // Dimming overlay for live events
-                                        if (isLive)
-                                          Container(
-                                            color: Colors.black.withValues(alpha: 0.3),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          event['name'] ?? "Unnamed Event",
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          event['description'] ?? "No description",
-                                          style: TextStyle(
-                                            color: Colors.grey[400],
-                                            fontSize: 10,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            },
                           ),
-                        );
-                      },
-                    ),
-            ),
-          ),
-          _buildSectionHeader('Trending Tracks'),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 220,
-              child: state.isLoadingTracks
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Colors.green),
-                    )
-                  : state.trackError != null
-                  ? Center(
-                      child: Text(
-                        'Error',
-                        style: TextStyle(color: Colors.grey[400]),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: state.trendingTracks.length,
-                      itemBuilder: (context, index) =>
-                          _buildTrackCard(context, state.trendingTracks[index], state.trendingTracks, index),
-                    ),
-            ),
-          ),
-          _buildSectionHeader('Random Tracks'),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 220,
-              child: state.isLoadingTracks
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Colors.green),
-                    )
-                  : state.trackError != null
-                  ? Center(
-                      child: Text(
-                        'Error',
-                        style: TextStyle(color: Colors.grey[400]),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: state.randomTracks.length,
-                      itemBuilder: (context, index) =>
-                          _buildTrackCard(context, state.randomTracks[index], state.randomTracks, index),
-                    ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
-      ),
-    ),
-  );
-},
-);
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-        child: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEventsSectionHeader(BuildContext context) {
-    final state = context.findAncestorStateOfType<HomeScreenState>();
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Events',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (state != null) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: state._isEventsWsConnected ? Colors.green : Colors.red,
-                      shape: BoxShape.circle,
-                      boxShadow: state._isEventsWsConnected
-                          ? [
-                              BoxShadow(
-                                color: Colors.green.withValues(alpha: 0.5),
-                                blurRadius: 4,
-                                spreadRadius: 1,
-                              )
-                            ]
-                          : null,
+
+                // ── New collection ────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                    child: AcidSectionHeader(
+                      title: 'New collection',
+                      onSeeAll: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SearchScreen()),
+                      ),
                     ),
                   ),
-                ],
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 214,
+                    child: state.isLoadingTracks
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: AppTheme.accent),
+                          )
+                        : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20),
+                            itemCount: state.randomTracks.length,
+                            itemBuilder: (context, i) {
+                              final t = state.randomTracks[i];
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(right: 14),
+                                child: CollectionCard(
+                                  title: t.title,
+                                  artist: t.artistName,
+                                  imageUrl: t.imageUrl,
+                                  onTap: () => _playTrack(context, t,
+                                      playlist: state.randomTracks,
+                                      index: i),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+
+                // Bottom breathing room for pill nav + mini player
+                const SliverToBoxAdapter(child: SizedBox(height: 170)),
               ],
             ),
-            GestureDetector(
-              onTap: () {
-                if (state != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CreateEventScreen(),
-                    ),
-                  ).then((_) {
-                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                    final token = authProvider.currentUser?.accessToken;
-                    if (token != null) {
-                      state._fetchEvents(token);
-                    }
-                  });
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.green, width: 1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add, color: Colors.green, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      'Create Event',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openEvent(
+      BuildContext context, HomeScreenState state, Map<String, dynamic> event) {
+    final isLive = event['playing'] == true;
+    if (isLive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.danger,
+          content: const Text(
+            'This room is already live. You cannot join now.',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EventDetailScreen(
+          eventId: event['id'],
+          eventName: event['name'] ?? 'Event',
         ),
       ),
     );
   }
+}
 
+class _CreateRoomCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _CreateRoomCard({required this.onTap});
 
-  Widget _buildTrackCard(BuildContext context, Track track, List<Track> playlist, int index) {
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Provider.of<AudioProvider>(context, listen: false).playTrack(track, playlist: playlist, index: index);
-      },
+      onTap: onTap,
       child: Container(
-        width: 155,
-        margin: const EdgeInsets.only(right: 16),
+        width: 150,
+        height: 240,
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              height: 155,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                image: DecorationImage(
-                  image: NetworkImage(track.imageUrl ?? ''),
-                  fit: BoxFit.cover,
-                ),
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(
+                color: AppTheme.accent,
+                shape: BoxShape.circle,
               ),
+              child: const Icon(Icons.add_rounded,
+                  color: AppTheme.onAccent, size: 30),
             ),
-            Text(
-              track.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            const SizedBox(height: 12),
+            Text('Host a room',
+                style: AppTheme.titleMd.copyWith(fontSize: 15)),
+            const SizedBox(height: 4),
+            Text('Go live', style: AppTheme.caption),
           ],
         ),
       ),

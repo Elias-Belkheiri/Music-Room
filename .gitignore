@@ -35,3 +35,22 @@ mobile/generated/
 
 # Logs
 *.log
+
+# Java / Maven
+**/target/
+*.class
+
+# Flutter / Dart generated artifacts
+**/coverage/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/android/local.properties
+
+# Native build output
+**/ios/Pods/
+**/macos/Pods/
+**/DerivedData/
+
+# Local credentials and signing keys
+*.jks
+*.keystore

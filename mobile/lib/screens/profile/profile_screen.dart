@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../providers/playlist_provider.dart';
@@ -44,7 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profile = profileProvider.profile;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212), // Spotify-like dark background
+      backgroundColor: AppTheme.background, // Spotify-like dark background
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -74,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       extendBodyBehindAppBar: true,
       body: profileProvider.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.green))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.accent))
           : profileProvider.errorMessage != null
           ? Center(
               child: Text(
@@ -95,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Color(0xFF006466), // Deep green/teal
-                          Color(0xFF121212),
+                          AppTheme.background,
                         ],
                       ),
                     ),

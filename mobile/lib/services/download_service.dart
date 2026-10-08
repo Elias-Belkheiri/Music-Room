@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +32,8 @@ class DownloadService {
 
   // Download track audio and save metadata
   Future<bool> downloadTrack(Track track, {Function(double progress)? onProgress}) async {
+    // No filesystem on web — downloads unsupported, stream only.
+    if (kIsWeb) return false;
     if (track.audioUrl == null || track.audioUrl!.isEmpty) return false;
 
     try {
@@ -77,6 +80,7 @@ class DownloadService {
 
   // Check if a track is downloaded locally
   Future<bool> isTrackDownloaded(String trackId) async {
+    if (kIsWeb) return false;
     final folder = await _localPath;
     final file = File('$folder/$trackId.mp3');
     return await file.exists();
@@ -84,6 +88,9 @@ class DownloadService {
 
   // Get local file path for a track
   Future<String?> getLocalTrackPath(String trackId) async {
+    // Web has no local files — always stream, never throw (path_provider
+    // is unsupported on web and would break playback for every track).
+    if (kIsWeb) return null;
     final folder = await _localPath;
     final file = File('$folder/$trackId.mp3');
     if (await file.exists()) {
@@ -94,10 +101,12 @@ class DownloadService {
 
   // Delete downloaded track
   Future<void> deleteTrack(String trackId) async {
-    final folder = await _localPath;
-    final file = File('$folder/$trackId.mp3');
-    if (await file.exists()) {
-      await file.delete();
+    if (!kIsWeb) {
+      final folder = await _localPath;
+      final file = File('$folder/$trackId.mp3');
+      if (await file.exists()) {
+        await file.delete();
+      }
     }
     await _removeTrackMetadata(trackId);
   }
@@ -140,6 +149,8 @@ class DownloadService {
 
   // Retrieve list of downloaded tracks (self-healing: only returns physically existing files)
   Future<List<Track>> getDownloadedTracks() async {
+    // No downloadable files on web.
+    if (kIsWeb) return [];
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_downloadedTracksKey);
     if (jsonString == null) return [];

@@ -127,6 +127,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      textCapitalization: TextCapitalization.none,
+                      autocorrect: false,
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                       decoration: const InputDecoration(
                         hintText: 'Email address',
@@ -233,8 +235,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(
+                                    AppTheme.onAccent,
                                   ),
                                 ),
                               )

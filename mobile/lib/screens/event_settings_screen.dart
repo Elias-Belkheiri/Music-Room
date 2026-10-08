@@ -76,8 +76,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
     super.dispose();
   }
 
-  String? get _token =>
-      Provider.of<AuthProvider>(context, listen: false).currentUser?.accessToken;
+  String? get _token => Provider.of<AuthProvider>(
+    context,
+    listen: false,
+  ).currentUser?.accessToken;
 
   String? get _currentUserId =>
       Provider.of<AuthProvider>(context, listen: false).currentUser?.id;
@@ -150,7 +152,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
       return const Center(
         child: Padding(
           padding: EdgeInsets.only(top: 40),
-          child: CircularProgressIndicator(color: Color(0xFF1DB954)),
+          child: CircularProgressIndicator(color: AppTheme.accent),
         ),
       );
     }
@@ -165,13 +167,17 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isFollowersTab ? Icons.people_outline_rounded : Icons.person_add_alt_rounded,
+                isFollowersTab
+                    ? Icons.people_outline_rounded
+                    : Icons.person_add_alt_rounded,
                 color: Colors.white24,
                 size: 56,
               ),
               const SizedBox(height: 12),
               Text(
-                isFollowersTab ? 'No followers to invite' : 'No followed users to invite',
+                isFollowersTab
+                    ? 'No followers to invite'
+                    : 'No followed users to invite',
                 style: const TextStyle(color: Colors.white38, fontSize: 15),
               ),
             ],
@@ -197,13 +203,14 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
           final isInviting = _invitingIds.contains(userId);
 
           return ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 4,
+            ),
             leading: CircleAvatar(
               radius: 22,
               backgroundColor: Colors.white.withOpacity(0.1),
-              backgroundImage:
-                  avatar.isNotEmpty ? NetworkImage(avatar) : null,
+              backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
               child: avatar.isEmpty
                   ? const Icon(Icons.person, color: Colors.white54, size: 22)
                   : null,
@@ -211,9 +218,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             title: Text(
               name,
               style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15),
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
             ),
             trailing: SizedBox(
               width: 90,
@@ -221,8 +229,8 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               child: ElevatedButton(
                 onPressed: isInviting ? null : () => _inviteUser(userId),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1DB954),
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.accent,
+                  foregroundColor: AppTheme.onAccent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -234,11 +242,17 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('Invite',
+                    : const Text(
+                        'Invite',
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700)),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           );
@@ -267,23 +281,27 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
           SnackBar(
             content: const Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 18),
+                Icon(Icons.check_circle, color: AppTheme.onAccent, size: 18),
                 SizedBox(width: 10),
-                Text('Settings saved', style: TextStyle(color: Colors.white)),
+                Text(
+                  'Settings saved',
+                  style: TextStyle(color: AppTheme.onAccent),
+                ),
               ],
             ),
-            backgroundColor: const Color(0xFF1DB954),
+            backgroundColor: AppTheme.accent,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
       }
     } finally {
       if (mounted) setState(() => _savingSettings = false);
@@ -313,8 +331,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
     try {
       final results = await _userService.searchUsers(query, token);
       // Filter out current user AND users who are already collaborators
-      final collabIds =
-          _collaborators.map((c) => c['userId'] as String).toSet();
+      final collabIds = _collaborators
+          .map((c) => c['userId'] as String)
+          .toSet();
       final myId = _currentUserId;
       final filtered = results
           .where((u) => u['id'] != myId && !collabIds.contains(u['id']))
@@ -351,24 +370,28 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
           SnackBar(
             content: const Row(
               children: [
-                Icon(Icons.person_add, color: Colors.white, size: 18),
+                Icon(Icons.person_add, color: AppTheme.onAccent, size: 18),
                 SizedBox(width: 10),
-                Text('User invited!', style: TextStyle(color: Colors.white)),
+                Text(
+                  'User invited!',
+                  style: TextStyle(color: AppTheme.onAccent),
+                ),
               ],
             ),
-            backgroundColor: const Color(0xFF1DB954),
+            backgroundColor: AppTheme.accent,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     } catch (e) {
       setState(() => _invitingIds.remove(userId));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to invite: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to invite: $e')));
       }
     }
   }
@@ -388,9 +411,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
       await _loadCollaborators();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update role: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update role: $e')));
       }
     }
   }
@@ -402,8 +425,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Remove User',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Remove User',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Remove $name from this event?',
           style: const TextStyle(color: Colors.white70),
@@ -411,13 +436,17 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove',
-                style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Remove',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -429,7 +458,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
 
     try {
       await _eventService.removeCollaborator(
-          widget.eventId, collaboratorId, token);
+        widget.eventId,
+        collaboratorId,
+        token,
+      );
       await _loadCollaborators();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -437,16 +469,17 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             content: Text('$name removed'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to remove: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
       }
     }
   }
@@ -476,7 +509,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF1DB954),
+          indicatorColor: AppTheme.accent,
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white38,
@@ -494,11 +527,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildGeneralTab(),
-          _buildMembersTab(),
-          _buildInviteTab(),
-        ],
+        children: [_buildGeneralTab(), _buildMembersTab(), _buildInviteTab()],
       ),
     );
   }
@@ -514,12 +543,15 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
         children: [
           const SizedBox(height: 8),
           // Event Name
-          const Text('Event Name',
-              style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5)),
+          const Text(
+            'Event Name',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _nameController,
@@ -531,8 +563,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               hintText: 'Enter event name',
               hintStyle: const TextStyle(color: Colors.white24),
             ),
@@ -541,12 +575,15 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
           const SizedBox(height: 24),
 
           // Description
-          const Text('Description',
-              style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5)),
+          const Text(
+            'Description',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _descriptionController,
@@ -559,8 +596,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               hintText: 'Describe your event...',
               hintStyle: const TextStyle(color: Colors.white24),
             ),
@@ -575,14 +614,17 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               borderRadius: BorderRadius.circular(12),
             ),
             child: SwitchListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
               title: Text(
                 _isPrivate ? 'Private Event' : 'Public Event',
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600),
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               subtitle: Text(
                 _isPrivate
@@ -592,12 +634,12 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               ),
               secondary: Icon(
                 _isPrivate ? Icons.lock_rounded : Icons.public_rounded,
-                color: _isPrivate ? Colors.orangeAccent : const Color(0xFF1DB954),
+                color: _isPrivate ? Colors.orangeAccent : AppTheme.accent,
                 size: 24,
               ),
               value: _isPrivate,
               onChanged: (val) => setState(() => _isPrivate = val),
-              activeColor: const Color(0xFF1DB954),
+              activeColor: AppTheme.accent,
             ),
           ),
 
@@ -610,8 +652,8 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             child: ElevatedButton(
               onPressed: _savingSettings ? null : _saveSettings,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1DB954),
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.accent,
+                foregroundColor: AppTheme.onAccent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(26),
                 ),
@@ -622,11 +664,16 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Text(
                       'Save Changes',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ),
@@ -641,7 +688,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
   Widget _buildMembersTab() {
     if (_loadingCollaborators) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF1DB954)),
+        child: CircularProgressIndicator(color: AppTheme.accent),
       );
     }
 
@@ -662,9 +709,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             const Text(
               'No listeners yet',
               style: TextStyle(
-                  color: Colors.white38,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600),
+                color: Colors.white38,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -677,10 +725,13 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
     }
 
     final hasListeners = _listeners.isNotEmpty;
-    final totalItems = 1 + _collaborators.length + (hasListeners ? (1 + _listeners.length) : 0);
+    final totalItems =
+        1 +
+        _collaborators.length +
+        (hasListeners ? (1 + _listeners.length) : 0);
 
     return RefreshIndicator(
-      color: const Color(0xFF1DB954),
+      color: AppTheme.accent,
       onRefresh: _loadCollaborators,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -692,7 +743,11 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
               child: Row(
                 children: [
-                  const Icon(Icons.people_outline, color: Color(0xFF1DB954), size: 18),
+                  const Icon(
+                    Icons.people_outline,
+                    color: AppTheme.accent,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Collaborators (${_collaborators.length})',
@@ -719,7 +774,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             final isMe = userId == _currentUserId;
 
             return ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 4,
+              ),
               onTap: () {
                 Navigator.push(
                   context,
@@ -734,7 +792,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               leading: CircleAvatar(
                 radius: 22,
                 backgroundColor: Colors.white.withOpacity(0.1),
-                backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                backgroundImage: avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : null,
                 child: avatarUrl.isEmpty
                     ? const Icon(Icons.person, color: Colors.white54, size: 22)
                     : null,
@@ -745,25 +805,32 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                     child: Text(
                       displayName,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (isMe) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text('You',
-                          style: TextStyle(
-                              color: Colors.white38,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'You',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ],
@@ -773,25 +840,30 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: permission == 'owner'
                             ? Colors.orangeAccent.withOpacity(0.15)
                             : (permission == 'editor'
-                                ? const Color(0xFF1DB954).withOpacity(0.15)
-                                : Colors.blueGrey.withOpacity(0.15)),
+                                  ? AppTheme.accent.withOpacity(0.15)
+                                  : Colors.blueGrey.withOpacity(0.15)),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         permission == 'owner'
                             ? '👑 Owner'
-                            : (permission == 'editor' ? '✏️ Editor' : '👁 Viewer'),
+                            : (permission == 'editor'
+                                  ? '✏️ Editor'
+                                  : '👁 Viewer'),
                         style: TextStyle(
                           color: permission == 'owner'
                               ? Colors.orangeAccent
                               : (permission == 'editor'
-                                  ? const Color(0xFF1DB954)
-                                  : Colors.blueGrey[200]),
+                                    ? AppTheme.accent
+                                    : Colors.blueGrey[200]),
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
@@ -804,7 +876,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                   ? PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert, color: Colors.white38),
                       color: AppTheme.surface,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       onSelected: (value) {
                         if (value == 'make_editor') {
                           _updateRole(userId, 'editor');
@@ -820,9 +894,16 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                             value: 'make_editor',
                             child: Row(
                               children: [
-                                Icon(Icons.edit, color: Color(0xFF1DB954), size: 18),
+                                Icon(
+                                  Icons.edit,
+                                  color: AppTheme.accent,
+                                  size: 18,
+                                ),
                                 SizedBox(width: 10),
-                                Text('Make Editor', style: TextStyle(color: Colors.white)),
+                                Text(
+                                  'Make Editor',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ],
                             ),
                           ),
@@ -831,9 +912,16 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                             value: 'make_viewer',
                             child: Row(
                               children: [
-                                Icon(Icons.visibility, color: Colors.blueGrey, size: 18),
+                                Icon(
+                                  Icons.visibility,
+                                  color: Colors.blueGrey,
+                                  size: 18,
+                                ),
                                 SizedBox(width: 10),
-                                Text('Make Viewer', style: TextStyle(color: Colors.white)),
+                                Text(
+                                  'Make Viewer',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ],
                             ),
                           ),
@@ -842,9 +930,16 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                           value: 'remove',
                           child: Row(
                             children: [
-                              Icon(Icons.person_remove, color: Colors.redAccent, size: 18),
+                              Icon(
+                                Icons.person_remove,
+                                color: Colors.redAccent,
+                                size: 18,
+                              ),
                               SizedBox(width: 10),
-                              Text('Remove', style: TextStyle(color: Colors.redAccent)),
+                              Text(
+                                'Remove',
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
                             ],
                           ),
                         ),
@@ -861,7 +956,11 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
               child: Row(
                 children: [
-                  const Icon(Icons.headset_rounded, color: Colors.orangeAccent, size: 18),
+                  const Icon(
+                    Icons.headset_rounded,
+                    color: Colors.orangeAccent,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Active Listeners (${_listeners.length})',
@@ -885,13 +984,20 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
           final avatarUrl = listener['avatarUrl'] as String? ?? '';
           final isMe = userId == _currentUserId;
 
-          final collabIndexForListener = _collaborators.indexWhere((c) => c['userId'] == userId);
+          final collabIndexForListener = _collaborators.indexWhere(
+            (c) => c['userId'] == userId,
+          );
           final String permission = collabIndexForListener != -1
-              ? _collaborators[collabIndexForListener]['permission'] as String? ?? 'viewer'
+              ? _collaborators[collabIndexForListener]['permission']
+                        as String? ??
+                    'viewer'
               : 'viewer';
 
           return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 4,
+            ),
             onTap: () {
               Navigator.push(
                 context,
@@ -906,7 +1012,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             leading: CircleAvatar(
               radius: 22,
               backgroundColor: Colors.white.withOpacity(0.1),
-              backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+              backgroundImage: avatarUrl.isNotEmpty
+                  ? NetworkImage(avatarUrl)
+                  : null,
               child: avatarUrl.isEmpty
                   ? const Icon(Icons.person, color: Colors.white54, size: 22)
                   : null,
@@ -917,25 +1025,32 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                   child: Text(
                     displayName,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (isMe) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text('You',
-                        style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'You',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -945,25 +1060,30 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: permission == 'owner'
                           ? Colors.orangeAccent.withOpacity(0.15)
                           : (permission == 'editor'
-                              ? const Color(0xFF1DB954).withOpacity(0.15)
-                              : Colors.blueGrey.withOpacity(0.15)),
+                                ? AppTheme.accent.withOpacity(0.15)
+                                : Colors.blueGrey.withOpacity(0.15)),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       permission == 'owner'
                           ? '👑 Owner'
-                          : (permission == 'editor' ? '✏️ Editor' : '👁 Viewer'),
+                          : (permission == 'editor'
+                                ? '✏️ Editor'
+                                : '👁 Viewer'),
                       style: TextStyle(
                         color: permission == 'owner'
                             ? Colors.orangeAccent
                             : (permission == 'editor'
-                                ? const Color(0xFF1DB954)
-                                : Colors.blueGrey[200]),
+                                  ? AppTheme.accent
+                                  : Colors.blueGrey[200]),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -971,20 +1091,27 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1DB954).withOpacity(0.12),
+                      color: AppTheme.accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.play_arrow_rounded, color: Color(0xFF1DB954), size: 12),
+                        Icon(
+                          Icons.play_arrow_rounded,
+                          color: AppTheme.accent,
+                          size: 12,
+                        ),
                         SizedBox(width: 3),
                         Text(
                           'Listening Now',
                           style: TextStyle(
-                            color: Color(0xFF1DB954),
+                            color: AppTheme.accent,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -999,7 +1126,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                 ? PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert, color: Colors.white38),
                     color: AppTheme.surface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     onSelected: (value) {
                       if (value == 'make_editor') {
                         _updateRole(userId, 'editor');
@@ -1015,9 +1144,16 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                           value: 'make_editor',
                           child: Row(
                             children: [
-                              Icon(Icons.edit, color: Color(0xFF1DB954), size: 18),
+                              Icon(
+                                Icons.edit,
+                                color: AppTheme.accent,
+                                size: 18,
+                              ),
                               SizedBox(width: 10),
-                              Text('Make Editor', style: TextStyle(color: Colors.white)),
+                              Text(
+                                'Make Editor',
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ],
                           ),
                         ),
@@ -1026,9 +1162,16 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                           value: 'make_viewer',
                           child: Row(
                             children: [
-                              Icon(Icons.visibility, color: Colors.blueGrey, size: 18),
+                              Icon(
+                                Icons.visibility,
+                                color: Colors.blueGrey,
+                                size: 18,
+                              ),
                               SizedBox(width: 10),
-                              Text('Make Viewer', style: TextStyle(color: Colors.white)),
+                              Text(
+                                'Make Viewer',
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ],
                           ),
                         ),
@@ -1038,9 +1181,16 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                           value: 'remove',
                           child: Row(
                             children: [
-                              Icon(Icons.person_remove, color: Colors.redAccent, size: 18),
+                              Icon(
+                                Icons.person_remove,
+                                color: Colors.redAccent,
+                                size: 18,
+                              ),
                               SizedBox(width: 10),
-                              Text('Remove', style: TextStyle(color: Colors.redAccent)),
+                              Text(
+                                'Remove',
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
                             ],
                           ),
                         ),
@@ -1070,10 +1220,17 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white.withOpacity(0.06),
-              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: Colors.white38,
+              ),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white38, size: 20),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white38,
+                        size: 20,
+                      ),
                       onPressed: () {
                         _searchController.clear();
                         setState(() {
@@ -1087,8 +1244,10 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               hintText: 'Search users by name...',
               hintStyle: const TextStyle(color: Colors.white24),
             ),
@@ -1099,7 +1258,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
         if (_isSearching)
           const Padding(
             padding: EdgeInsets.only(top: 40),
-            child: CircularProgressIndicator(color: Color(0xFF1DB954)),
+            child: CircularProgressIndicator(color: AppTheme.accent),
           )
         else if (_searchController.text.isNotEmpty && _searchResults.isEmpty)
           Expanded(
@@ -1107,8 +1266,11 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.person_search_rounded,
-                      color: Colors.white24, size: 56),
+                  Icon(
+                    Icons.person_search_rounded,
+                    color: Colors.white24,
+                    size: 56,
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'No users found',
@@ -1131,7 +1293,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
                         color: _activeFollowTab == 0
-                            ? const Color(0xFF1DB954)
+                            ? AppTheme.accent
                             : Colors.white.withOpacity(0.06),
                         borderRadius: const BorderRadius.horizontal(
                           left: Radius.circular(12),
@@ -1141,7 +1303,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                       child: Text(
                         'Followers (${_getFilteredFollowList(_followers).length})',
                         style: TextStyle(
-                          color: _activeFollowTab == 0 ? Colors.white : Colors.white70,
+                          color: _activeFollowTab == 0
+                              ? AppTheme.onAccent
+                              : Colors.white70,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -1156,7 +1320,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
                         color: _activeFollowTab == 1
-                            ? const Color(0xFF1DB954)
+                            ? AppTheme.accent
                             : Colors.white.withOpacity(0.06),
                         borderRadius: const BorderRadius.horizontal(
                           right: Radius.circular(12),
@@ -1166,7 +1330,9 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                       child: Text(
                         'Following (${_getFilteredFollowList(_following).length})',
                         style: TextStyle(
-                          color: _activeFollowTab == 1 ? Colors.white : Colors.white70,
+                          color: _activeFollowTab == 1
+                              ? AppTheme.onAccent
+                              : Colors.white70,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -1178,8 +1344,7 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
             ),
           ),
           _buildFollowList(_activeFollowTab == 0 ? _followers : _following),
-        ]
-        else
+        ] else
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1197,24 +1362,31 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                 final isInviting = _invitingIds.contains(userId);
 
                 return ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 4,
+                  ),
                   leading: CircleAvatar(
                     radius: 22,
                     backgroundColor: Colors.white.withOpacity(0.1),
-                    backgroundImage:
-                        avatar.isNotEmpty ? NetworkImage(avatar) : null,
+                    backgroundImage: avatar.isNotEmpty
+                        ? NetworkImage(avatar)
+                        : null,
                     child: avatar.isEmpty
-                        ? const Icon(Icons.person,
-                            color: Colors.white54, size: 22)
+                        ? const Icon(
+                            Icons.person,
+                            color: Colors.white54,
+                            size: 22,
+                          )
                         : null,
                   ),
                   title: Text(
                     name,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                   trailing: SizedBox(
                     width: 90,
@@ -1222,8 +1394,8 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                     child: ElevatedButton(
                       onPressed: isInviting ? null : () => _inviteUser(userId),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1DB954),
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: AppTheme.onAccent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -1235,11 +1407,17 @@ class _EventSettingsScreenState extends State<EventSettingsScreen>
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : const Text('Invite',
+                          : const Text(
+                              'Invite',
                               style: TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w700)),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                 );

@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/app_theme.dart';
+import '../../providers/audio_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../providers/subscription_provider.dart';
+import '../subscription_screen.dart';
 import 'edit_profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  /// Called when the back button is pressed while this screen is shown as a
+  /// bottom-navigation tab (where there is nothing to pop). The host
+  /// (MainScreen) uses it to switch back to the Home tab. When Settings is
+  /// pushed as a route (e.g. from ProfileScreen) a normal pop is used.
+  final VoidCallback? onBack;
+
+  const SettingsScreen({Key? key, this.onBack}) : super(key: key);
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -45,14 +56,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _notesController = TextEditingController();
   final _realNameController = TextEditingController();
 
+  late UserProfileProvider _profileProvider;
+  bool _didInitFromProfile = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromProfile());
+    _profileProvider = context.read<UserProfileProvider>();
+    // The profile may still be loading when this tab is first built
+    // (IndexedStack builds all tabs up-front). Fill the fields as soon as
+    // the profile arrives instead of only once in a post-frame callback,
+    // otherwise the form stays permanently empty and edits look "not saved".
+    _profileProvider.addListener(_maybeLoadFromProfile);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _maybeLoadFromProfile(),
+    );
   }
 
   @override
   void dispose() {
+    _profileProvider.removeListener(_maybeLoadFromProfile);
     _bioController.dispose();
     _locationController.dispose();
     _websiteController.dispose();
@@ -64,10 +87,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  void _maybeLoadFromProfile() {
+    if (!mounted || _didInitFromProfile) return;
+    if (_profileProvider.profile == null) return;
+    _didInitFromProfile = true;
+    _loadFromProfile();
+  }
+
   void _loadFromProfile() {
-    final profile = context.read<UserProfileProvider>().profile;
+    final profile = _profileProvider.profile;
     final prefs = profile?.musicPreferences ?? {};
 
+    if (!mounted) return;
     setState(() {
       _activeDiscovery = prefs['discovery_mode']?.toString() != 'passive';
       _searchDistance =
@@ -105,55 +136,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final authProvider = context.read<AuthProvider>();
     final profileProvider = context.read<UserProfileProvider>();
     final token = authProvider.currentUser?.accessToken;
-    if (token == null) return;
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Not authenticated. Please log in again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
-    // Save profile info tiers
-    final infoSuccess = await profileProvider.updateProfile(
-      token,
-      profileProvider.profile?.displayName ?? '',
-      profileProvider.profile?.avatarUrl,
-      publicInfo: {
-        'bio': _bioController.text.trim(),
-        'location': _locationController.text.trim(),
-        'website': _websiteController.text.trim(),
-      },
-      friendsInfo: {
-        'phone': _phoneController.text.trim(),
-        'birthday': _birthdayController.text.trim(),
-        'instagram': _instagramController.text.trim(),
-      },
-      privateInfo: {
-        'notes': _notesController.text.trim(),
-        'real_name': _realNameController.text.trim(),
-      },
-    );
+    bool infoSuccess = false;
+    bool prefsSuccess = false;
+    try {
+      // Save profile info tiers
+      infoSuccess = await profileProvider.updateProfile(
+        token,
+        profileProvider.profile?.displayName ?? '',
+        profileProvider.profile?.avatarUrl,
+        publicInfo: {
+          'bio': _bioController.text.trim(),
+          'location': _locationController.text.trim(),
+          'website': _websiteController.text.trim(),
+        },
+        friendsInfo: {
+          'phone': _phoneController.text.trim(),
+          'birthday': _birthdayController.text.trim(),
+          'instagram': _instagramController.text.trim(),
+        },
+        privateInfo: {
+          'notes': _notesController.text.trim(),
+          'real_name': _realNameController.text.trim(),
+        },
+      );
 
-    // Save music preferences
-    final prefsSuccess = await profileProvider.updatePreferences(token, {
-      'discovery_mode': _activeDiscovery ? 'active' : 'passive',
-      'max_distance_km': _searchDistance.round(),
-      'favorite_genres': _selectedGenres.toList()..sort(),
-      'data_saver': _dataSaver,
-      'offline_mode': _offlineMode,
-      'explicit_content': _explicitContent,
-      'private_session': _privateSession,
-      'notifications_enabled': _notificationsEnabled,
-    });
+      // Save music preferences
+      prefsSuccess = await profileProvider.updatePreferences(token, {
+        'discovery_mode': _activeDiscovery ? 'active' : 'passive',
+        'max_distance_km': _searchDistance.round(),
+        'favorite_genres': _selectedGenres.toList()..sort(),
+        'data_saver': _dataSaver,
+        'offline_mode': _offlineMode,
+        'explicit_content': _explicitContent,
+        'private_session': _privateSession,
+        'notifications_enabled': _notificationsEnabled,
+      });
+    } catch (e) {
+      debugPrint('Error saving settings: $e');
+    }
 
-    if (prefsSuccess) {
+    // Always persist offline mode locally first so it functions even without network
+    try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('offline_mode', _offlineMode);
-    }
+    } catch (_) {}
 
     if (!mounted) return;
 
     final allOk = infoSuccess && prefsSuccess;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(allOk ? 'Settings saved' : 'Could not save settings'),
-        backgroundColor: allOk ? Colors.green : Colors.red,
-      ),
-    );
+    if (allOk) {
+      // Re-sync the form with the server truth returned by the PUT calls
+      // so the UI can never show stale/diverged values.
+      _loadFromProfile();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Settings saved',
+            style: TextStyle(color: AppTheme.onAccent),
+          ),
+          backgroundColor: AppTheme.accent,
+        ),
+      );
+    } else {
+      final detail = profileProvider.errorMessage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            detail != null && detail.isNotEmpty
+                ? 'Could not save settings: $detail'
+                : 'Could not save settings. Please try again.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _sectionTitle(String title, {String? action}) {
@@ -188,11 +255,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: Colors.white10),
       ),
-      child: child,
+      child: Material(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
     );
   }
 
@@ -209,24 +280,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(12),
+          color: AppTheme.surfaceRaised,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: AppTheme.textPrimary, size: 20),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: AppTheme.titleMd.copyWith(fontSize: 16)),
       subtitle: subtitle == null
           ? null
-          : Text(
-              subtitle,
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-            ),
+          : Text(subtitle, style: AppTheme.caption.copyWith(fontSize: 12)),
       trailing: trailing,
     );
   }
@@ -247,7 +309,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onChanged: (newValue) {
           setState(() => onChanged(newValue));
         },
-        activeColor: const Color(0xFF1DB954),
+        activeColor: AppTheme.accent,
       ),
     );
   }
@@ -261,7 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: isSelected ? Colors.black : Colors.white,
         fontWeight: FontWeight.w600,
       ),
-      selectedColor: const Color(0xFF1DB954),
+      selectedColor: AppTheme.accent,
       backgroundColor: Colors.white10,
       checkmarkColor: Colors.black,
       onSelected: (selected) {
@@ -354,7 +416,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               hintStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
               filled: true,
               fillColor: Colors.white.withOpacity(0.06),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Colors.white10),
@@ -365,7 +430,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF1DB954)),
+                borderSide: const BorderSide(color: AppTheme.accent),
               ),
             ),
           ),
@@ -379,11 +444,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final profileProvider = context.watch<UserProfileProvider>();
     final profile = profileProvider.profile;
     final isLoading = profileProvider.isLoading;
+    // Reserve space for the floating mini player + pill nav so the
+    // Save/Log out buttons can always be scrolled into view.
+    final audio = context.watch<AudioProvider>();
+    final hasMini = audio.hasTrack && !audio.isPlayerMaximized;
+    final listBottomPadding = hasMini ? 230.0 : 150.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF121212),
+        backgroundColor: AppTheme.background,
         elevation: 0,
         centerTitle: true,
         title: const Text(
@@ -392,7 +462,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // This screen is used both as a pushed route (Profile → Settings)
+            // and as a bottom-navigation tab. Popping the root route leaves
+            // a black screen, so only pop when there is a route to pop;
+            // otherwise delegate (tab host switches back to Home).
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              widget.onBack?.call();
+            }
+          },
         ),
         actions: [
           TextButton(
@@ -400,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text(
               'Save',
               style: TextStyle(
-                color: Color(0xFF1DB954),
+                color: AppTheme.accent,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -410,7 +490,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: Stack(
         children: [
           ListView(
-            padding: const EdgeInsets.only(bottom: 32),
+            padding: EdgeInsets.only(bottom: listBottomPadding),
             children: [
               _sectionTitle('Your profile'),
               _card(
@@ -436,26 +516,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
+              _sectionTitle('Membership & Plans'),
+              _card(
+                child: Consumer<SubscriptionProvider>(
+                  builder: (context, sub, _) => _settingTile(
+                    icon: Icons.star_rounded,
+                    title: sub.isPremium ? 'Premium Active' : 'Free Plan',
+                    subtitle: sub.isPremium
+                        ? 'Unlimited playlists & party hosting'
+                        : 'Upgrade to unlock collaborative playlist editor',
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: AppTheme.accent,
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubscriptionScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              _sectionTitle('Debug'),
+              _card(
+                child: Consumer<ConnectivityProvider>(
+                  builder: (context, connectivity, _) => _toggleTile(
+                    icon: Icons.cloud_off_rounded,
+                    title: 'Simulate offline',
+                    subtitle:
+                        'Forces the offline banner + cached data without touching Wi-Fi',
+                    value: connectivity.debugForceOffline,
+                    onChanged: (offline) {
+                      connectivity.setDebugForceOffline(offline);
+                    },
+                  ),
+                ),
+              ),
               _buildPrivacySection(
                 icon: Icons.public,
                 title: 'Profile details',
                 visibilityNote: 'This data will be shown to everyone.',
-                accentColor: const Color(0xFF1DB954),
+                accentColor: AppTheme.accent,
                 fields: [
-                  _infoField(label: 'Bio', controller: _bioController, hint: 'Tell the world about yourself…'),
-                  _infoField(label: 'Location', controller: _locationController, hint: 'City, Country'),
-                  _infoField(label: 'Website', controller: _websiteController, hint: 'https://…', keyboardType: TextInputType.url),
+                  _infoField(
+                    label: 'Bio',
+                    controller: _bioController,
+                    hint: 'Tell the world about yourself…',
+                  ),
+                  _infoField(
+                    label: 'Location',
+                    controller: _locationController,
+                    hint: 'City, Country',
+                  ),
+                  _infoField(
+                    label: 'Website',
+                    controller: _websiteController,
+                    hint: 'https://…',
+                    keyboardType: TextInputType.url,
+                  ),
                 ],
               ),
               _buildPrivacySection(
                 icon: Icons.group,
                 title: 'Close friends details',
-                visibilityNote: 'This data is visible only when you follow each other.',
+                visibilityNote:
+                    'This data is visible only when you follow each other.',
                 accentColor: const Color(0xFFFFC107),
                 fields: [
-                  _infoField(label: 'Phone', controller: _phoneController, hint: '+1 234 567 890', keyboardType: TextInputType.phone),
-                  _infoField(label: 'Birthday', controller: _birthdayController, hint: 'YYYY-MM-DD'),
-                  _infoField(label: 'Instagram', controller: _instagramController, hint: '@username'),
+                  _infoField(
+                    label: 'Phone',
+                    controller: _phoneController,
+                    hint: '+1 234 567 890',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  _infoField(
+                    label: 'Birthday',
+                    controller: _birthdayController,
+                    hint: 'YYYY-MM-DD',
+                  ),
+                  _infoField(
+                    label: 'Instagram',
+                    controller: _instagramController,
+                    hint: '@username',
+                  ),
                 ],
               ),
               _buildPrivacySection(
@@ -464,8 +610,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 visibilityNote: 'Only you can view this data.',
                 accentColor: const Color(0xFF9C27B0),
                 fields: [
-                  _infoField(label: 'Real name', controller: _realNameController, hint: 'Your legal name'),
-                  _infoField(label: 'Notes', controller: _notesController, hint: 'Personal notes…'),
+                  _infoField(
+                    label: 'Real name',
+                    controller: _realNameController,
+                    hint: 'Your legal name',
+                  ),
+                  _infoField(
+                    label: 'Notes',
+                    controller: _notesController,
+                    hint: 'Personal notes…',
+                  ),
                 ],
               ),
               _sectionTitle('Favorite genres'),
@@ -485,7 +639,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _savePreferences,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1DB954),
+                    backgroundColor: AppTheme.accent,
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -519,7 +673,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               color: Colors.black.withOpacity(0.45),
               child: const Center(
-                child: CircularProgressIndicator(color: Color(0xFF1DB954)),
+                child: CircularProgressIndicator(color: AppTheme.accent),
               ),
             ),
         ],

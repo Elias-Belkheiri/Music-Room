@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../config/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../router/app_router_delegate.dart';
+import '../widgets/google_sign_in_button.dart';
 
 /// Unified Auth landing screen + Splash Screen experience.
 class AuthScreen extends StatefulWidget {
@@ -94,12 +95,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: AppTheme.accent,
+      backgroundColor: AppTheme.background,
       body: Stack(
         children: [
-          // ── 1. Base Background (Purple / Accent) ───────────────────────────
+          // ── 1. Base background (Acid Noir dark) ────────────────────────────
           Container(
-            color: AppTheme.accent,
+            color: AppTheme.background,
             width: double.infinity,
             height: double.infinity,
           ),
@@ -114,27 +115,14 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   height: 140,
                   decoration: BoxDecoration(
                     color: AppTheme.accent,
-                    borderRadius: BorderRadius.circular(36),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.accent.withValues(alpha: 0.6),
-                        blurRadius: 50,
-                        spreadRadius: 10,
-                        offset: const Offset(0, 10),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 15,
-                        spreadRadius: 5,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
+                    borderRadius:
+                        BorderRadius.circular(AppTheme.radiusLg),
                   ),
                   child: const Center(
                     child: Icon(
                       Icons.headphones_rounded,
                       size: 80,
-                      color: Colors.white,
+                      color: AppTheme.onAccent,
                     ),
                   ),
                 ),
@@ -227,10 +215,11 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         onPressed: () => widget.routerDelegate.navigateToSignup(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.accent,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppTheme.onAccent,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(
+                                AppTheme.radiusPill),
                           ),
                         ),
                         child: Text(
@@ -239,6 +228,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.2,
+                            color: AppTheme.onAccent,
                           ),
                         ),
                       ),
@@ -275,14 +265,14 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildSocialButton(
+                        buildGoogleSignInPlatformButton(
+                          size: 60,
                           onPressed: () async {
                             final auth = Provider.of<AuthProvider>(context, listen: false);
                             final success = await auth.signInWithGoogle();
-                            if (!success && context.mounted) {
-                              final message = auth.errorMessage ?? 'Google sign-in failed';
+                            if (!success && context.mounted && auth.errorMessage != null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(message)),
+                                SnackBar(content: Text(auth.errorMessage!)),
                               );
                             }
                           },
@@ -297,26 +287,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({required VoidCallback onPressed, required Widget child}) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppTheme.textSecondary.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: child,
       ),
     );
   }
@@ -388,7 +358,7 @@ class _RisingBlackWavesPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = AppTheme.background;
+    final paint = Paint()..color = AppTheme.surface;
     final path = Path();
 
     final t = animationValue * 2 * pi;

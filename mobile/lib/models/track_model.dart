@@ -6,6 +6,7 @@ class Track {
   final String artistName;
   final String? audioUrl;
   final bool isStreamable;
+  final bool isStreamGated;
   final String? description;
   final int? durationMs;
 
@@ -17,9 +18,29 @@ class Track {
     required this.artistName,
     this.audioUrl,
     this.isStreamable = true,
+    this.isStreamGated = false,
     this.description,
     this.durationMs,
   });
+
+  /// Audius returns 403 `{"code":403,"error":"track not streamable"}` on
+  /// `/v1/tracks/{id}/stream` for stream-gated (premium / special-access)
+  /// tracks even though `is_streamable` is `true`. Those tracks can never
+  /// play in the app, so they must be treated as unstreamable here —
+  /// otherwise the queue fills with tracks that fail with iOS AVPlayer
+  /// error (-1102) "You do not have permission to access the requested
+  /// resource" and show 00:00/00:00.
+  static bool _resolveStreamable(Map<String, dynamic> json) {
+    final bool gated = json['is_stream_gated'] == true;
+    if (gated) return false;
+    if (json['is_delete'] == true) return false;
+    if (json['is_unlisted'] == true) return false;
+    final dynamic streamable = json['is_streamable'];
+    if (streamable is bool) return streamable;
+    final dynamic available = json['is_available'];
+    if (available is bool) return available;
+    return true;
+  }
 
   factory Track.fromJson(Map<String, dynamic> json) {
     final dynamic rawId = json['id'] ?? json['track_id'];
@@ -30,6 +51,7 @@ class Track {
 
     final int? durationSec = json['duration'] as int?;
     final int? durationMs = durationSec != null ? durationSec * 1000 : null;
+    final bool gated = json['is_stream_gated'] == true;
 
     return Track(
       id: rawId?.toString() ?? '',
@@ -42,7 +64,8 @@ class Track {
       audioUrl: (streamUrl != null && streamUrl.isNotEmpty)
           ? streamUrl
           : fallbackStreamUrl,
-      isStreamable: json['is_streamable'] ?? json['is_available'] ?? true,
+      isStreamable: _resolveStreamable(json),
+      isStreamGated: gated,
       description: json['description'],
       durationMs: durationMs,
     );

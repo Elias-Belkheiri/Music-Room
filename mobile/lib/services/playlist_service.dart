@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/playlist_model.dart';
 import '../models/track_model.dart';
+import 'connectivity_service.dart';
+import 'local_database_service.dart';
 
 class PlaylistService {
   String get effectiveBaseUrl => _effectiveBaseUrl;
@@ -32,20 +34,36 @@ class PlaylistService {
     'ngrok-skip-browser-warning': 'true',
   };
 
-  // Retrieve current playlists
+  // Retrieve current playlists (with offline local DB fallback)
   Future<List<Playlist>> getMyPlaylists(String token) async {
-    final response = await http.get(
-      Uri.parse('$_effectiveBaseUrl/api/playlists'),
-      headers: _headers(token),
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
-      return data.map((json) => Playlist.fromJson(json)).toList();
-    } else {
-      throw Exception(
-        'Failed to load playlists (${response.statusCode}): ${utf8.decode(response.bodyBytes)}',
+    try {
+      final response = await http.get(
+        Uri.parse('$_effectiveBaseUrl/api/playlists'),
+        headers: _headers(token),
       );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        try {
+          await LocalDatabaseService().cachePlaylists(
+            data.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+          );
+        } catch (_) {}
+        return data.map((json) => Playlist.fromJson(json)).toList();
+      } else {
+        throw Exception(
+          'Failed to load playlists (${response.statusCode}): ${utf8.decode(response.bodyBytes)}',
+        );
+      }
+    } catch (e) {
+      // Offline fallback: load cached playlists
+      try {
+        final cached = await LocalDatabaseService().getCachedPlaylists();
+        if (cached.isNotEmpty) {
+          return cached.map((json) => Playlist.fromJson(json)).toList();
+        }
+      } catch (_) {}
+      rethrow;
     }
   }
 
@@ -134,6 +152,11 @@ class PlaylistService {
     String visibility,
     String token,
   ) async {
+    if (!ConnectivityService().isOnline) {
+      throw Exception(
+        'Offline — playlist creation is unavailable while offline.',
+      );
+    }
     final response = await http.post(
       Uri.parse('$_effectiveBaseUrl/api/playlists'),
       headers: _headers(token),

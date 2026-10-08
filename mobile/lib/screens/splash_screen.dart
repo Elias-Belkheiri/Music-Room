@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.accent,
+      backgroundColor: AppTheme.background,
       body: Stack(
         children: [
           // ── Rising Black Wave ───────────────────────────────────────────
@@ -96,27 +96,14 @@ class _SplashScreenState extends State<SplashScreen>
                       height: 140,
                       decoration: BoxDecoration(
                         color: AppTheme.accent,
-                        borderRadius: BorderRadius.circular(36),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.accent.withValues(alpha: 0.6),
-                            blurRadius: 50,
-                            spreadRadius: 10,
-                            offset: const Offset(0, 10),
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 15,
-                            spreadRadius: 5,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.radiusLg),
                       ),
                       child: const Center(
                         child: Icon(
                           Icons.headphones_rounded,
                           size: 80,
-                          color: Colors.white,
+                          color: AppTheme.onAccent,
                         ),
                       ),
                     ),
@@ -164,7 +151,7 @@ class _RisingBlackWavesPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = AppTheme.background;
+    final paint = Paint()..color = AppTheme.surface;
     final path = Path();
 
     final t = animationValue * 2 * pi;

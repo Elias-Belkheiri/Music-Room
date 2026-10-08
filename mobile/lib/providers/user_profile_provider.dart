@@ -38,7 +38,10 @@ class UserProfileProvider with ChangeNotifier {
     try {
       return await action(currentToken);
     } catch (e) {
-      if (e.toString().contains('401') || e.toString().contains('403') || e.toString().contains('404')) {
+      // Only 401/403 mean the access token is bad. A 404 (or anything
+      // else) is a real backend response — refreshing the token for it is
+      // wrong and can even log the user out when the refresh fails.
+      if (e.toString().contains('401') || e.toString().contains('403')) {
         final success = await auth.refreshTokens();
         if (success) {
           currentToken = auth.currentUser?.accessToken ?? '';
@@ -92,7 +95,9 @@ class UserProfileProvider with ChangeNotifier {
 
     try {
       final updateData = <String, dynamic>{
-        'displayName': newDisplayName,
+        // Never send an empty display name: it would wipe the server-side
+        // name when the local profile hasn't loaded yet.
+        if (newDisplayName.trim().isNotEmpty) 'displayName': newDisplayName.trim(),
         if (newAvatarUrl != null && newAvatarUrl.isNotEmpty) 'avatarUrl': newAvatarUrl,
         if (publicInfo != null) 'publicInfo': publicInfo,
         if (privateInfo != null) 'privateInfo': privateInfo,

@@ -34,6 +34,22 @@ public class AuthServiceImpl implements AuthService {
     private final DeviceService deviceService;
 
     /**
+     * Normalizes an email for storage and lookup.
+     * Beyond trim + lowercase this also strips invisible characters that
+     * mobile autofill/keyboards can inject (zero-width spaces, BOM,
+     * non-breaking spaces via NFKC) — String.trim() leaves those behind
+     * and they silently break exact-match lookups.
+     */
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        String s = java.text.Normalizer.normalize(email, java.text.Normalizer.Form.NFKC);
+        s = s.replaceAll("[\\p{Cc}\\p{Cf}]", "");
+        return s.strip().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /**
      * Helper method to extract real client IP address
      */
     private String getClientIpAddress(HttpServletRequest request) {
@@ -53,7 +69,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse register(RegisterRequestDTO request, HttpServletRequest httpRequest) {
         try {
-                if (userRepository.existsByEmail(request.email())) {
+                String email = normalizeEmail(request.email());
+                if (userRepository.existsByEmailIgnoreCase(email)) {
                 throw new RuntimeException("Email already exists");
                 } else if (request.password().length() < 6) {
                 throw new RuntimeException("Password must be at least 6 characters");
@@ -62,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
                 SecureRandom secureRandom = new SecureRandom();
                 String verificationCode = String.format("%06d", secureRandom.nextInt(1000000));
                 User user = User.builder()
-                        .email(request.email())
+                        .email(email)
                         .passwordHash(passwordEncoder.encode(request.password()))
                         .displayName(request.displayname())
                         .authProvider("local")
@@ -71,12 +88,12 @@ public class AuthServiceImpl implements AuthService {
                 user.setVerificationCode(verificationCode);
 
                 User savedUser = userRepository.save(user);
-                emailService.sendVerificationEmail(request.email(), verificationCode);
-                
+                emailService.sendVerificationEmail(email, verificationCode);
+
                 String ipAddress = getClientIpAddress(httpRequest);
-                
+
                 // Log user registration
-                logService.logUserRegister(savedUser.getId(), request.email(), "web", ipAddress);
+                logService.logUserRegister(savedUser.getId(), email, "web", ipAddress);
                 
                 String accessToken = jwtTokenProvider.generateAccessToken(
                         savedUser.getEmail(),
@@ -106,9 +123,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequestDTO request, HttpServletRequest httpRequest) {
 
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
                 .orElseThrow(() -> new RuntimeException("Email does not exist"));
-        
+
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new RuntimeException("Invalid credentials");
         }
@@ -179,7 +196,7 @@ public class AuthServiceImpl implements AuthService {
     // Generate and send verification code
     @Override
      public String sendVerificationEmail(SendVerificationEmailDTO request, HttpServletRequest httpRequest) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
                 .orElseThrow(() -> new RuntimeException("Email does not exist"));
 
         SecureRandom secureRandom = new SecureRandom();
@@ -206,7 +223,7 @@ public class AuthServiceImpl implements AuthService {
     // Verify email with code
     @Override
     public String verifyEmail(VerifyEmailDTO request, HttpServletRequest httpRequest) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
                 .orElseThrow(() -> new RuntimeException("Email does not exist"));
 
         if (user.getVerificationCode() == null || !user.getVerificationCode().equals(request.verificationCode())) {
@@ -228,7 +245,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
      public String verifyEmailPassReset(VerifyEmailDTO request, HttpServletRequest httpRequest) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
                 .orElseThrow(() -> new RuntimeException("Email does not exist"));
 
         if (user.getVerificationCode() == null || !user.getVerificationCode().equals(request.verificationCode())) {
@@ -246,7 +263,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public String PassResetChange(ResetPassword request, HttpServletRequest httpRequest) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
                 .orElseThrow(() -> new RuntimeException("Email does not exist"));
 
         if (user.getVerificationCode() == null || !user.getVerificationCode().equals(request.verificationCode())) {
@@ -268,11 +285,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse googleLogin(String email, String name, String googleId, HttpServletRequest httpRequest) {
         // Check if user exists
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(email))
                 .orElseGet(() -> {
                     // Create new user if doesn't exist
                     User newUser = User.builder()
-                            .email(email)
+                            .email(normalizeEmail(email))
                             .displayName(name)
                             .authProvider("google")
                             .providerId(googleId)

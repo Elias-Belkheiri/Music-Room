@@ -82,7 +82,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
       length: 2,
       initialIndex: widget.initialTab,
       child: Scaffold(
-        backgroundColor: const Color(0xFF121212),
+        backgroundColor: AppTheme.background,
         appBar: AppBar(
           backgroundColor: const Color(0xFF1E1E1E),
           elevation: 0,

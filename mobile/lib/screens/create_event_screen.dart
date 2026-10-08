@@ -146,7 +146,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppTheme.onAccent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(28),
                   ),

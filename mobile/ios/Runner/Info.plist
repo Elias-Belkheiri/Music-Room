@@ -22,6 +22,17 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.469783669296-vrfmrpagvj6tlbijel1olsr3kdl9q1t2</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -66,21 +77,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- Google Sign-In: URL scheme for OAuth redirect back to the app -->
-	<!-- Replace the string below with your REVERSED iOS Client ID from Google Cloud Console -->
-	<!-- Format: com.googleusercontent.apps.YOUR_IOS_CLIENT_ID -->
-	<!-- Example: if iOS Client ID = 123456-abc.apps.googleusercontent.com -->
-	<!--          then reversed =    com.googleusercontent.apps.123456-abc -->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.469783669296-vrfmrpagvj6tlbijel1olsr3kdl9q1t2</string>
-			</array>
-		</dict>
-	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>MusicRoom uses your location to discover nearby live events and music beacons.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>MusicRoom uses Bluetooth to scan for nearby music room beacons.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>MusicRoom uses Bluetooth to connect with music room beacons.</string>
 </dict>
 </plist>

@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'profile/profile_screen.dart';
 import '../screens/playlist_detail_screen.dart';
 import '../providers/audio_provider.dart';
+import '../widgets/responsive_layout.dart';
 
 enum _LibraryFilter { all, myPlaylists, saved, downloads }
 
@@ -217,16 +218,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     children: [
                       Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.import_export_rounded,
-                              color: Colors.white, size: 20),
-                          SizedBox(width: 8),
+                        children: [
+                          const Icon(Icons.import_export_rounded,
+                              color: AppTheme.textPrimary, size: 20),
+                          const SizedBox(width: 8),
                           Text(
                             'Recently added',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold),
+                            style: AppTheme.label.copyWith(
+                                color: AppTheme.textPrimary),
                           ),
                         ],
                       ),
@@ -238,7 +237,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           _isGridView
                               ? Icons.list_rounded
                               : Icons.grid_view_rounded,
-                          color: Colors.white,
+                          color: AppTheme.textPrimary,
                           size: 20,
                         ),
                         padding: EdgeInsets.zero,
@@ -271,8 +270,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.library_music_outlined,
-                              color: Colors.white24, size: 64),
+                          const Icon(Icons.library_music_outlined,
+                              color: AppTheme.textSecondary, size: 64),
                           const SizedBox(height: 16),
                           Text(
                             _filter == _LibraryFilter.saved
@@ -280,8 +279,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                 : _filter == _LibraryFilter.downloads
                                     ? 'No downloaded tracks yet'
                                     : 'No items yet',
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 16),
+                            style: AppTheme.titleMd.copyWith(
+                                color: AppTheme.textSecondary),
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -290,8 +289,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                 : _filter == _LibraryFilter.downloads
                                     ? 'Go to Search and tap on options menu to download tracks'
                                     : 'Create playlists or download songs',
-                            style: const TextStyle(
-                                color: Colors.white30, fontSize: 13),
+                            style: AppTheme.caption,
                           ),
                         ],
                       ),
@@ -303,12 +301,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
               // ── Library List / Grid ─────────────────────────────────────────
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 180),
                 sliver: _isGridView
                     ? SliverGrid(
                         gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: ResponsiveLayout.gridCrossAxisCount(context),
                           mainAxisSpacing: 16,
                           crossAxisSpacing: 16,
                           childAspectRatio: 0.8,
@@ -338,7 +336,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               onTap: () => _openPlaylistDetail(context, item),
                               trailing: isDownload
                                   ? IconButton(
-                                      icon: const Icon(Icons.more_vert_rounded, color: Colors.white54),
+                                      icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
                                       onPressed: () => _showDownloadOptionsBottomSheet(context, track!),
                                     )
                                   : null,
@@ -351,7 +349,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                 background: Container(
                                   alignment: Alignment.centerRight,
                                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  color: Colors.redAccent,
+                                  color: AppTheme.danger,
                                   child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
                                 ),
                                 onDismissed: (direction) async {
@@ -363,7 +361,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text('Removed "${track.title}" from downloads'),
-                                        backgroundColor: Colors.redAccent,
+                                        backgroundColor: AppTheme.danger,
                                         duration: const Duration(seconds: 2),
                                       ),
                                     );
@@ -396,18 +394,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
         }
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : AppTheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? AppTheme.accent : AppTheme.surfaceRaised,
+          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
         ),
         child: Text(
           label,
-          style: TextStyle(
-            color: selected ? Colors.black : Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+          style: AppTheme.label.copyWith(
+            color: selected ? AppTheme.onAccent : AppTheme.textPrimary,
           ),
         ),
       ),
@@ -417,9 +413,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void _showDownloadOptionsBottomSheet(BuildContext context, Track track) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: AppTheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
       ),
       builder: (context) {
         return SafeArea(
@@ -498,7 +495,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       onLongPress: isDownload
           ? () => _showDownloadOptionsBottomSheet(context, track!)
           : null,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -507,7 +504,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius:
+                        BorderRadius.circular(AppTheme.radiusMd),
                     image: DecorationImage(
                       image: NetworkImage(item['image']),
                       fit: BoxFit.cover,
@@ -519,16 +517,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     top: 6,
                     left: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.accent.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(4),
+                        color: AppTheme.accent,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                       ),
-                      child: const Text('Saved',
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold)),
+                      child: Text('Saved',
+                          style: AppTheme.label.copyWith(
+                              color: AppTheme.onAccent,
+                              fontSize: 10)),
                     ),
                   ),
                 if (isDownload)
@@ -536,16 +533,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     top: 6,
                     left: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1DB954).withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(4),
+                        color: AppTheme.accent,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                       ),
-                      child: const Text('Offline',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold)),
+                      child: Text('Offline',
+                          style: AppTheme.label.copyWith(
+                              color: AppTheme.onAccent,
+                              fontSize: 10)),
                     ),
                   ),
                 if (item['isPrivate'] == true)
@@ -555,11 +551,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
+                        color: AppTheme.background.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.lock_outline_rounded,
-                          color: Colors.redAccent, size: 14),
+                          color: AppTheme.danger, size: 14),
                     ),
                   ),
               ],
@@ -567,14 +563,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           const SizedBox(height: 8),
           Text(item['title'],
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14),
+              style: AppTheme.titleMd.copyWith(fontSize: 14),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
           Text(item['subtitle'],
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              style: AppTheme.caption.copyWith(fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
         ],
@@ -623,7 +616,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   MaterialPageRoute(builder: (_) => const ProfileScreen())),
               child: CircleAvatar(
                 radius: 18,
-                backgroundColor: Colors.grey[800],
+                backgroundColor: AppTheme.surfaceRaised,
                 backgroundImage: avatarUrl != null &&
                         avatarUrl.isNotEmpty &&
                         !avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
@@ -632,33 +625,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 child: avatarUrl == null ||
                         avatarUrl.isEmpty ||
                         avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
-                    ? const Icon(Icons.person, size: 18, color: Colors.white70)
+                    ? const Icon(Icons.person,
+                        size: 18, color: AppTheme.textSecondary)
                     : null,
               ),
             );
           },
         ),
         const SizedBox(width: 16),
-        const Text(
+        Text(
           'Your Library',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-          ),
+          style: AppTheme.titleLg.copyWith(fontWeight: FontWeight.w700),
         ),
         const Spacer(),
         IconButton(
           onPressed: () => setState(() => _isSearching = true),
-          icon: const Icon(Icons.search_rounded, color: Colors.white, size: 28),
+          icon: const Icon(Icons.search_rounded,
+              color: AppTheme.textPrimary, size: 28),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
         ),
         const SizedBox(width: 16),
         IconButton(
           onPressed: widget.onPlusTap,
-          icon: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+          icon: const Icon(Icons.add_rounded,
+              color: AppTheme.textPrimary, size: 32),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
         ),
@@ -671,23 +662,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
       children: [
         Expanded(
           child: Container(
-            height: 40,
+            height: 48,
             decoration: BoxDecoration(
               color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius:
+                  BorderRadius.circular(AppTheme.radiusPill),
             ),
             child: TextField(
               controller: _searchController,
               autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: AppTheme.body.copyWith(fontSize: 14),
               onChanged: (val) => setState(() => _searchQuery = val),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Find in Your Library',
-                hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
-                prefixIcon: Icon(Icons.search_rounded,
-                    color: Colors.white54, size: 20),
+                hintStyle:
+                    AppTheme.caption.copyWith(fontSize: 14),
+                prefixIcon: const Icon(Icons.search_rounded,
+                    color: AppTheme.textSecondary, size: 20),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
           ),

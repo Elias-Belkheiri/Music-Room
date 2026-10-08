@@ -1,7 +1,9 @@
 package com.musicroom.musicroom.controller;
 
 import com.musicroom.musicroom.dto.*;
+import com.musicroom.musicroom.exception.UnauthorizedException;
 import com.musicroom.musicroom.service.PlaylistService;
+import com.musicroom.musicroom.service.SubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class PlaylistController {
 
     private final PlaylistService playlistService;
+    private final SubscriptionService subscriptionService;
 
     @Operation(summary = "Créer une playlist")
     @PostMapping
@@ -29,6 +32,9 @@ public class PlaylistController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody CreatePlaylistRequest request) {
         UUID userId = UUID.fromString(userDetails.getUsername());
+        if (!subscriptionService.isFeatureAllowed(userId, "playlist_create")) {
+            throw new UnauthorizedException("Premium subscription required to create playlists");
+        }
         return ResponseEntity.status(201)
                 .body(playlistService.createPlaylist(userId, request));
     }

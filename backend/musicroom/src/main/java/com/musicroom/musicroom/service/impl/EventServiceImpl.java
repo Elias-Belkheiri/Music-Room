@@ -88,6 +88,32 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<EventDto> getNearbyEvents(double lat, double lng, double radiusKm) {
+        List<Event> publicEvents = eventRepo.findByVisibilityAndActiveTrue("public");
+        return publicEvents.stream()
+                .filter(e -> e.getLatitude() != null && e.getLongitude() != null)
+                .filter(e -> haversineDistance(lat, lng, e.getLatitude(), e.getLongitude()) <= radiusKm)
+                .sorted((e1, e2) -> Double.compare(
+                        haversineDistance(lat, lng, e1.getLatitude(), e1.getLongitude()),
+                        haversineDistance(lat, lng, e2.getLatitude(), e2.getLongitude())
+                ))
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    private double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371.0; // Earth's radius in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
     private void checkEventAccess(Event event, UUID userId) {
         String visibility = event.getVisibility() != null ? event.getVisibility() : "public";
         if ("private".equalsIgnoreCase(visibility)) {
@@ -562,11 +588,11 @@ public class EventServiceImpl implements EventService {
                 .startsAt(event.getStartsAt())
                 .endsAt(event.getEndsAt())
                 .active(event.isActive())
-                .isPlaying(playbackService.isEventPlaying(event.getId()))
+                .isPlaying(playbackService != null && playbackService.isEventPlaying(event.getId()))
                 .ownerId(event.getOwner().getId())
                 .ownerName(event.getOwner().getDisplayName())
                 .trackCount(event.getPlaylist() != null ? event.getPlaylist().size() : 0)
-                .participantCount(webSocketEventListener.getListenerCount(event.getId()))
+                .participantCount(webSocketEventListener != null ? webSocketEventListener.getListenerCount(event.getId()) : 0)
                 .createdAt(event.getCreatedAt())
                 .coverUrl(event.getCoverUrl())
                 .firstTrackCoverUrl(firstTrackCover)

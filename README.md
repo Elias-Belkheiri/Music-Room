@@ -172,102 +172,78 @@ graph TD
 ## 🚀 Getting Started
 
 ### Prerequisites
-*   **Java Development Kit (JDK)**: version 21
-*   **Maven**: version 3.9+ (or use the packaged Maven wrapper `./mvnw`)
-*   **PostgreSQL**: version 15+
-*   **Flutter SDK**: version 3.11+
-*   **SMTP Credentials**: A working Gmail/SMTP server to send OTP emails.
 
----
+- **Java JDK 21** (the backend includes a Maven wrapper, so a separate Maven installation is not required)
+- **PostgreSQL** (15 or later) and a local `musicroom` database
+- **Flutter SDK** matching the constraint in `mobile/pubspec.yaml` (Dart 3.11.1 or later)
+- **Android Studio / Android SDK** for Android builds; **Xcode on macOS** for iOS builds
 
-### 1. Backend Configuration & Setup
+### Backend: configure and run
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/MusicRoom-App.git
-   cd MusicRoom-App/backend/musicroom
-   ```
-
-2. **Configure environment variables**:
-   Create a `.env` file in `backend/musicroom/` (use the provided `.env` template as reference):
-   ```env
-   # PostgreSQL Settings
-   DB_URL=jdbc:postgresql://localhost:5432/musicroom
-   DB_USERNAME=postgres
-   DB_PASSWORD=your_secure_password
-
-   # JWT Properties
-   JWT_SECRET=your_super_secret_jwt_signing_key_must_be_long_enough_to_be_secure_256_bits
-   JWT_EXPIRATION=86400000 # 24 Hours (milliseconds)
-   JWT_REFRESH_EXPIRATION=604800000 # 7 Days (milliseconds)
-
-   # Mail/SMTP Settings
-   SPRING_MAIL_HOST=smtp.gmail.com
-   SPRING_MAIL_PORT=587
-   SPRING_MAIL_USERNAME=your_email@gmail.com
-   SPRING_MAIL_PASSWORD=your_app_specific_gmail_password
-
-   # Google Authentication Credentials
-   GOOGLE_WEB_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
-   GOOGLE_IOS_CLIENT_ID=your-google-ios-client-id.apps.googleusercontent.com
-   ```
-
-3. **Initialize Database**:
-   Create a PostgreSQL database named `musicroom`:
+1. Create a PostgreSQL database, for example:
    ```sql
    CREATE DATABASE musicroom;
    ```
-
-4. **Run the Backend Application**:
-   Execute the Spring Boot Maven wrapper to start the server locally:
+2. Create `backend/musicroom/.env` (do not commit it). Set at minimum:
+   ```env
+   DB_URL=jdbc:postgresql://localhost:5432/musicroom
+   DB_USERNAME=postgres
+   DB_PASSWORD=your_database_password
+   JWT_SECRET=replace_with_a_long_random_secret
+   ```
+   For email verification and password recovery, configure `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `MAIL_FROM`. Configure `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` if using Google authentication. The complete variable list is in `env_example`; the application also has local defaults for some settings.
+3. Start the backend from the repository root:
    ```bash
+   cd backend/musicroom
    ./mvnw spring-boot:run
    ```
-   The backend server will bootstrap and start listening on port `8080`.
-   *   **Swagger API Docs**: Access [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) to interact with live documentation.
+   The API listens on port `8080`. Swagger UI is available at <http://localhost:8080/swagger-ui/index.html>.
 
----
+Run backend tests and create a deployable JAR with:
+```bash
+cd backend/musicroom
+./mvnw test
+./mvnw clean package
+```
+The JAR is written to `backend/musicroom/target/`.
 
-### 2. Mobile Configuration & Setup
+### Mobile: configure and run
 
-1. **Navigate to the mobile app directory**:
-   ```bash
-   cd ../../mobile
-   ```
-
-2. **Configure Flutter Environment**:
-   Create a `.env` file inside the `mobile/` directory:
+1. Create `mobile/.env` (the Flutter project loads it as an asset):
    ```env
-   # Backend API Endpoint
-   # Use localhost for iOS simulator, or 10.0.2.2 for Android Emulator
    API_URL=http://localhost:8080
-   
-   # WebSocket Connection Endpoint
-   # Use ws://localhost:8080/ws for iOS simulator, or ws://10.0.2.2:8080/ws for Android
-   WS_URL=ws://localhost:8080/ws
-
-   # Google Auth IDs (must match the backend parameters)
-   GOOGLE_WEB_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
-   GOOGLE_IOS_CLIENT_ID=your-google-ios-client-id.apps.googleusercontent.com
+   API_BASE_URL=http://localhost:8080
+   GOOGLE_WEB_CLIENT_ID=your_google_web_client_id
+   GOOGLE_IOS_CLIENT_ID=your_google_ios_client_id
    ```
-
-3. **Fetch Flutter packages**:
+   Set both `API_URL` and `API_BASE_URL` to the same address reachable from the device. Android Emulator uses `http://10.0.2.2:8080`; an iOS Simulator can use `http://localhost:8080`. A physical device needs the computer's LAN address and a backend accessible on that network. Do not commit real credentials.
+2. From the repository root, install dependencies and select a connected device:
    ```bash
+   cd mobile
    flutter pub get
-   ```
-
-4. **Verify Connected Devices**:
-   Ensure you have a simulator running (iOS Simulator or Android Emulator) or a physical developer device connected:
-   ```bash
    flutter devices
-   ```
-
-5. **Run the Application**:
-   ```bash
    flutter run
    ```
+   Start the backend separately for features that make API requests.
 
----
+### Build and test the mobile app
+
+Run static analysis and the Flutter test suite from `mobile/`:
+```bash
+flutter analyze
+flutter test
+```
+
+Build a release Android APK or web app with:
+```bash
+flutter build apk --release
+flutter build web --release
+```
+For iOS (requires macOS and Xcode):
+```bash
+flutter build ios --release
+```
+Build artifacts are written under `mobile/build/`.
 
 ## 👥 Authors & Contributions
 

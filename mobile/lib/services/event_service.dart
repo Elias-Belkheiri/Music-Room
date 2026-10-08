@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/track_model.dart';
+import 'connectivity_service.dart';
 
 class EventService {
   String get _effectiveBaseUrl {
@@ -29,6 +30,9 @@ class EventService {
     bool isPrivate,
     String token,
   ) async {
+    if (!ConnectivityService().isOnline) {
+      throw Exception('Offline — event creation is unavailable while offline.');
+    }
     final url = Uri.parse('$_effectiveBaseUrl$_eventsPath');
     final response = await http.post(
       url,
@@ -340,6 +344,30 @@ class EventService {
       throw Exception(
         'Failed to fetch playback status: ${response.statusCode}',
       );
+    }
+  }
+
+  /// Find active public events near a geographic / beacon location (Bonus VI.2)
+  Future<List<Map<String, dynamic>>> getNearbyEvents({
+    required double lat,
+    required double lng,
+    double radiusKm = 5.0,
+    String? token,
+  }) async {
+    final url = Uri.parse(
+      '$_effectiveBaseUrl$_eventsPath/nearby?lat=$lat&lng=$lng&radiusKm=$radiusKm',
+    );
+    final headers = {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final response = await http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } else {
+      throw Exception('Failed to fetch nearby events: ${response.statusCode}');
     }
   }
 }

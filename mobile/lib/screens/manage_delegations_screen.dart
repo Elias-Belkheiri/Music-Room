@@ -187,7 +187,7 @@ class _ManageDelegationsScreenState extends State<ManageDelegationsScreen> with 
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.green))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.accent))
           : TabBarView(
               controller: _tabController,
               children: [
@@ -251,11 +251,11 @@ class _ManageDelegationsScreenState extends State<ManageDelegationsScreen> with 
             children: [
               CircleAvatar(
                 backgroundColor: delegation.permissionLevel == 'ADMIN' 
-                    ? Colors.green.withOpacity(0.2) 
+                    ? AppTheme.accent.withOpacity(0.2) 
                     : Colors.blue.withOpacity(0.2),
                 child: Icon(
                   delegation.permissionLevel == 'ADMIN' ? Icons.security : Icons.remove_red_eye,
-                  color: delegation.permissionLevel == 'ADMIN' ? Colors.green : Colors.blue,
+                  color: delegation.permissionLevel == 'ADMIN' ? AppTheme.accent : Colors.blue,
                 ),
               ),
               const SizedBox(width: 16),
@@ -395,7 +395,7 @@ class _ManageDelegationsScreenState extends State<ManageDelegationsScreen> with 
               onPressed: _selectedFriendId == null ? null : _createDelegation,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
+                foregroundColor: AppTheme.onAccent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                 elevation: 0,
               ),

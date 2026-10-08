@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/track_model.dart';
+import '../services/connectivity_service.dart';
 import '../services/download_service.dart';
 
 class AudioProvider extends ChangeNotifier {
@@ -77,14 +78,16 @@ class AudioProvider extends ChangeNotifier {
   }
 
   Future<void> _loadAudioSource(Track track, {int seekToMs = 0}) async {
-    // 1. Check if Offline Mode is active
+    // 1. Check if Offline Mode is active — either the user-facing setting
+    // or actual/simulated loss of connectivity (banner state).
     final prefs = await SharedPreferences.getInstance();
     final isOfflineMode = prefs.getBool('offline_mode') ?? false;
+    final effectiveOffline = isOfflineMode || !ConnectivityService().isOnline;
 
     // 2. Check if track is downloaded
     final localPath = await DownloadService().getLocalTrackPath(track.id);
 
-    if (isOfflineMode && localPath == null) {
+    if (effectiveOffline && localPath == null) {
       _playbackError = "Offline mode active. Playback is limited to downloaded tracks.";
       notifyListeners();
       throw Exception("Offline mode: track not downloaded");
@@ -114,6 +117,8 @@ class AudioProvider extends ChangeNotifier {
         await _audioPlayer.setUrl(track.audioUrl!);
       }
     } else {
+      _playbackError = "This track is not currently streamable.";
+      notifyListeners();
       throw Exception("No streamable source or local file found.");
     }
   }
@@ -141,12 +146,33 @@ class AudioProvider extends ChangeNotifier {
     try {
       await _loadAudioSource(track, seekToMs: seekToMs);
       await _audioPlayer.setVolume(_isMuted ? 0.0 : 1.0);
-      _audioPlayer.play();
+      await _audioPlayer.play();
       if (!_isLiveEvent) {
         onPlaybackStateChanged?.call('PLAY', seekToMs);
       }
     } catch (e) {
       debugPrint("Error playing audio: $e");
+      // Surface the failure to the UI instead of failing silently
+      // (mini player listens to playbackError and shows a SnackBar).
+      if (_playbackError == null) {
+        final msg = e.toString();
+        if (msg.contains('Offline mode')) {
+          _playbackError =
+              "Offline mode active. Playback is limited to downloaded tracks.";
+        } else if (msg.contains('-1102') ||
+            msg.contains('permission') ||
+            msg.contains('403') ||
+            msg.contains('not streamable')) {
+          // Audius stream-gated tracks answer /stream with 403, which
+          // iOS AVPlayer reports as (-1102) permission denied.
+          _playbackError = _isLiveEvent
+              ? "This track isn't streamable on Audius (restricted access). Ask an editor to skip it."
+              : "This track isn't streamable on Audius (restricted access). Try another one.";
+        } else {
+          _playbackError = "Could not play this track. Try another one.";
+        }
+      }
+      notifyListeners();
     }
     notifyListeners();
   }
@@ -198,8 +224,9 @@ class AudioProvider extends ChangeNotifier {
         onPlaybackStateChanged?.call('PLAY', 0);
       } catch (e) {
         debugPrint("Error playing next audio: $e");
-        // Auto-advance if track fails to load, unless offline mode error occurred
         if (_playbackError == null) {
+          _playbackError = "Could not play this track. Skipping.";
+          notifyListeners();
           nextTrack();
         }
       }

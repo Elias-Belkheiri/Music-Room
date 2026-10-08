@@ -119,7 +119,7 @@ class _InviteFriendsScreenState extends State<InviteFriendsScreen> {
                           });
                         },
                         activeColor: AppTheme.accent,
-                        checkColor: Colors.white,
+                        checkColor: AppTheme.onAccent,
                       );
                     },
                   ),
@@ -133,7 +133,7 @@ class _InviteFriendsScreenState extends State<InviteFriendsScreen> {
                       onPressed: _selectedFriends.isEmpty ? null : _sendInvites,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppTheme.onAccent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28),
                         ),

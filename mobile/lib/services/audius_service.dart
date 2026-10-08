@@ -14,6 +14,49 @@ class AudiusService {
     });
   }
 
+  /// Only tracks that can actually be streamed via
+  /// `/v1/tracks/{id}/stream` may enter the app. In particular Audius
+  /// stream-gated tracks report `is_streamable: true` but answer the
+  /// stream endpoint with 403 `track not streamable`, which surfaces on
+  /// iOS as AVPlayer (-1102) "permission denied" and a stuck 00:00 queue.
+  bool _isPlayable(Track track) {
+    return track.isStreamable &&
+        !track.isStreamGated &&
+        track.audioUrl != null &&
+        track.audioUrl!.isNotEmpty;
+  }
+
+  List<Track> _parsePlayableTracks(List<dynamic> tracksJson) {
+    return tracksJson
+        .whereType<Map<String, dynamic>>()
+        .map(Track.fromJson)
+        .where(_isPlayable)
+        .toList();
+  }
+
+  /// Verifies the stream endpoint actually serves audio (not a 403
+  /// `track not streamable` JSON). Used before suggesting a track so
+  /// gated/restricted tracks never enter an event queue.
+  Future<bool> verifyTrackStreamable(Track track) async {
+    if (!_isPlayable(track)) return false;
+    try {
+      final response = await http
+          .get(
+            Uri.parse(track.audioUrl!),
+            headers: {'Range': 'bytes=0-1'},
+          )
+          .timeout(const Duration(seconds: 10));
+      // Audius answers playable streams with 302 (redirect to content
+      // node), 200 or 206. Gated tracks answer 403.
+      if (response.statusCode == 403) return false;
+      return response.statusCode < 400;
+    } catch (_) {
+      // On network failure don't block the suggestion; playback will
+      // surface the error if the track is truly unplayable.
+      return true;
+    }
+  }
+
   Future<List<Playlist>> getTrendingPlaylists() async {
     try {
       final response = await http
@@ -41,7 +84,7 @@ class AudiusService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> tracksJson = data['data'] ?? [];
-        return tracksJson.map((json) => Track.fromJson(json)).toList();
+        return _parsePlayableTracks(tracksJson);
       }
       return [];
     } catch (e) {
@@ -59,7 +102,7 @@ class AudiusService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> tracksJson = data['data'] ?? [];
-        final tracks = tracksJson.map((json) => Track.fromJson(json)).toList();
+        final tracks = _parsePlayableTracks(tracksJson);
         tracks.shuffle();
         return tracks.take(10).toList();
       }
@@ -120,16 +163,7 @@ class AudiusService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> tracksJson = data['data'] ?? [];
-        return tracksJson
-            .whereType<Map<String, dynamic>>()
-            .map(Track.fromJson)
-            .where(
-              (track) =>
-                  track.isStreamable &&
-                  track.audioUrl != null &&
-                  track.audioUrl!.isNotEmpty,
-            )
-            .toList();
+        return _parsePlayableTracks(tracksJson);
       }
       return [];
     } catch (e) {
@@ -148,7 +182,7 @@ class AudiusService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> tracksJson = data['data'] ?? [];
-        return tracksJson.map((json) => Track.fromJson(json)).toList();
+        return _parsePlayableTracks(tracksJson);
       }
       return [];
     } catch (e) {

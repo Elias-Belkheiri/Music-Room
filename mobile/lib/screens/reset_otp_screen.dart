@@ -8,7 +8,11 @@ class ResetOtpScreen extends StatefulWidget {
   final AppRouterDelegate routerDelegate;
   final String email;
 
-  const ResetOtpScreen({super.key, required this.routerDelegate, required this.email});
+  const ResetOtpScreen({
+    super.key,
+    required this.routerDelegate,
+    required this.email,
+  });
 
   @override
   State<ResetOtpScreen> createState() => _ResetOtpScreenState();
@@ -34,9 +38,12 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
       email: widget.email,
       otp: _otpController.text.trim(),
     );
-    
+
     if (success && mounted) {
-      widget.routerDelegate.navigateToNewPassword(widget.email, _otpController.text.trim());
+      widget.routerDelegate.navigateToNewPassword(
+        widget.email,
+        _otpController.text.trim(),
+      );
     }
   }
 
@@ -48,7 +55,10 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('A new OTP has been sent to ${widget.email}'),
+          content: Text(
+            'A new OTP has been sent to ${widget.email}',
+            style: const TextStyle(color: AppTheme.onAccent),
+          ),
           backgroundColor: AppTheme.accent,
         ),
       );

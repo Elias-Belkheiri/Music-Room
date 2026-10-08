@@ -64,6 +64,22 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    @Builder.Default
+    @Column(name = "subscription_tier", nullable = false)
+    private String subscriptionTier = "free";
+
+    @Column(name = "subscription_started_at")
+    private LocalDateTime subscriptionStartedAt;
+
+    @Column(name = "subscription_expires_at")
+    private LocalDateTime subscriptionExpiresAt;
+
+    public boolean isPremium() {
+        return "premium".equals(subscriptionTier)
+            && subscriptionExpiresAt != null
+            && subscriptionExpiresAt.isAfter(LocalDateTime.now());
+    }
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<RefreshToken> refreshTokens = new ArrayList<>();

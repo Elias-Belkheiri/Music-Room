@@ -122,7 +122,7 @@ class _CreatePlaylistScreenState extends State<CreatePlaylistScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppTheme.onAccent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(28),
                   ),
@@ -141,21 +141,34 @@ class _CreatePlaylistScreenState extends State<CreatePlaylistScreen> {
   }
 
   Widget _buildTextField(String hint, TextEditingController controller, {int maxLines = 1}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
-          contentPadding: const EdgeInsets.all(16),
-          border: InputBorder.none,
-        ),
+    final isMultiline = maxLines > 1;
+    final radius = BorderRadius.circular(12);
+    OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: color, width: width),
+        );
+    return TextField(
+      controller: controller,
+      minLines: isMultiline ? 3 : 1,
+      maxLines: maxLines,
+      keyboardType: isMultiline ? TextInputType.multiline : TextInputType.text,
+      textInputAction:
+          isMultiline ? TextInputAction.newline : TextInputAction.next,
+      textAlignVertical:
+          isMultiline ? TextAlignVertical.top : TextAlignVertical.center,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white24),
+        filled: true,
+        fillColor: AppTheme.surface,
+        contentPadding: const EdgeInsets.all(16),
+        alignLabelWithHint: true,
+        border: border(Colors.transparent, 0),
+        enabledBorder: border(Colors.transparent, 0),
+        focusedBorder: border(AppTheme.accent, 1.5),
+        errorBorder: border(AppTheme.danger, 1),
+        focusedErrorBorder: border(AppTheme.danger, 1.5),
       ),
     );
   }

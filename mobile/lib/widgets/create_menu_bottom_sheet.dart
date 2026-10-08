@@ -1,12 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
+import '../providers/subscription_provider.dart';
 import '../screens/create_event_screen.dart';
 import '../screens/create_playlist_screen.dart';
+import '../screens/subscription_screen.dart';
 
 class CreateMenuOverlay extends StatelessWidget {
   final VoidCallback onClose;
 
   const CreateMenuOverlay({super.key, required this.onClose});
+
+  void _showUpgradeDialog(NavigatorState navigator) {
+    showDialog(
+      context: navigator.context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.star_rounded, color: AppTheme.accent),
+            const SizedBox(width: 8),
+            const Text('Premium Feature', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: const Text(
+          'Collaborative Playlist Editor is only available to Premium members. Upgrade to create and collaborate on playlists in real time!',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: AppTheme.onAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+              ),
+            ),
+            child: const Text('View Plans'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              navigator.push(
+                MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,11 +63,11 @@ class CreateMenuOverlay extends StatelessWidget {
       children: [
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 0),
-          decoration: const BoxDecoration(
-            color: Color(0xFF282828),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
             borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+              topLeft: Radius.circular(AppTheme.radiusLg),
+              topRight: Radius.circular(AppTheme.radiusLg),
             ),
           ),
           child: Column(
@@ -30,7 +78,7 @@ class CreateMenuOverlay extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -39,11 +87,17 @@ class CreateMenuOverlay extends StatelessWidget {
                 context,
                 icon: Icons.music_note_rounded,
                 title: 'Playlist',
-                subtitle: 'Create a playlist with songs or episodes',
+                subtitle: 'Create a playlist with songs or episodes (Premium)',
                 onTap: () {
+                  final navigator =
+                      Navigator.of(context, rootNavigator: true);
+                  final sub = Provider.of<SubscriptionProvider>(context, listen: false);
                   onClose();
-                  Navigator.push(
-                    context,
+                  if (!sub.isPremium) {
+                    _showUpgradeDialog(navigator);
+                    return;
+                  }
+                  navigator.push(
                     MaterialPageRoute(
                       builder: (context) => const CreatePlaylistScreen(),
                     ),
@@ -56,9 +110,10 @@ class CreateMenuOverlay extends StatelessWidget {
                 title: 'Event',
                 subtitle: 'Start a new live event',
                 onTap: () {
+                  final navigator =
+                      Navigator.of(context, rootNavigator: true);
                   onClose();
-                  Navigator.push(
-                    context,
+                  navigator.push(
                     MaterialPageRoute(
                       builder: (context) => const CreateEventScreen(),
                     ),
@@ -66,6 +121,7 @@ class CreateMenuOverlay extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 24),
+              SafeArea(top: false, child: const SizedBox.shrink()),
             ],
           ),
         ),
@@ -89,11 +145,12 @@ class CreateMenuOverlay extends StatelessWidget {
             Container(
               width: 56,
               height: 56,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+              decoration: const BoxDecoration(
+                color: AppTheme.accent,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: Colors.white, size: 30),
+              child:
+                  Icon(icon, color: AppTheme.onAccent, size: 30),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -102,19 +159,12 @@ class CreateMenuOverlay extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: AppTheme.titleMd.copyWith(fontSize: 16),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 14,
-                    ),
+                    style: AppTheme.caption.copyWith(fontSize: 14),
                   ),
                 ],
               ),

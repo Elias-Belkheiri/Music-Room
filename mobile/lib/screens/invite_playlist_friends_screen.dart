@@ -11,10 +11,12 @@ class InvitePlaylistFriendsScreen extends StatefulWidget {
   const InvitePlaylistFriendsScreen({super.key, required this.playlistId});
 
   @override
-  State<InvitePlaylistFriendsScreen> createState() => _InvitePlaylistFriendsScreenState();
+  State<InvitePlaylistFriendsScreen> createState() =>
+      _InvitePlaylistFriendsScreenState();
 }
 
-class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScreen> {
+class _InvitePlaylistFriendsScreenState
+    extends State<InvitePlaylistFriendsScreen> {
   bool _isLoading = true;
   List<dynamic> _followers = [];
   List<dynamic> _following = [];
@@ -45,19 +47,31 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
 
     try {
       final currentUser = await UserService().getCurrentUserProfile(token);
-      final followers = await FollowService().getFollowers(currentUser.id, token);
-      final following = await FollowService().getFollowing(currentUser.id, token);
+      final followers = await FollowService().getFollowers(
+        currentUser.id,
+        token,
+      );
+      final following = await FollowService().getFollowing(
+        currentUser.id,
+        token,
+      );
 
       final playlistService = PlaylistService();
       try {
-        final playlist = await playlistService.getPlaylistById(widget.playlistId, token);
+        final playlist = await playlistService.getPlaylistById(
+          widget.playlistId,
+          token,
+        );
         _existingCollaboratorIds.add(playlist.ownerId);
       } catch (e) {
         debugPrint('Error loading playlist owner: $e');
       }
 
       try {
-        final collaborators = await playlistService.getPlaylistCollaborators(widget.playlistId, token);
+        final collaborators = await playlistService.getPlaylistCollaborators(
+          widget.playlistId,
+          token,
+        );
         for (var c in collaborators) {
           final cid = c['userId'] as String?;
           if (cid != null) {
@@ -120,7 +134,12 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
       final playlistService = PlaylistService();
       for (String collaboratorId in _selectedCollaborators) {
         try {
-          await playlistService.inviteUserToPlaylist(widget.playlistId, collaboratorId, _permission, token);
+          await playlistService.inviteUserToPlaylist(
+            widget.playlistId,
+            collaboratorId,
+            _permission,
+            token,
+          );
           successCount++;
         } catch (e) {
           if (e.toString().contains('409')) {
@@ -138,7 +157,8 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
 
         String msg = 'Collaborators updated!';
         if (successCount > 0 && conflictCount > 0) {
-          msg = 'Successfully invited $successCount collaborators (others were already added).';
+          msg =
+              'Successfully invited $successCount collaborators (others were already added).';
         } else if (successCount > 0) {
           msg = 'Collaborators invited successfully!';
         } else if (conflictCount > 0) {
@@ -147,7 +167,10 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg),
+            content: Text(
+              msg,
+              style: const TextStyle(color: AppTheme.onAccent),
+            ),
             backgroundColor: AppTheme.accent,
           ),
         );
@@ -165,22 +188,36 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
     }
   }
 
-  Widget _buildUserTile(String userId, String displayName, String? avatarUrl, bool isSelected) {
+  Widget _buildUserTile(
+    String userId,
+    String displayName,
+    String? avatarUrl,
+    bool isSelected,
+  ) {
     if (_existingCollaboratorIds.contains(userId)) {
       return ListTile(
         leading: CircleAvatar(
           radius: 20,
-          backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty && !avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
+          backgroundImage:
+              avatarUrl != null &&
+                  avatarUrl.isNotEmpty &&
+                  !avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
               ? NetworkImage(avatarUrl)
               : null,
           backgroundColor: Colors.grey[800],
-          child: avatarUrl == null || avatarUrl.isEmpty || avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
+          child:
+              avatarUrl == null ||
+                  avatarUrl.isEmpty ||
+                  avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
               ? const Icon(Icons.person, color: Colors.white)
               : null,
         ),
         title: Text(
           displayName,
-          style: const TextStyle(color: Colors.white60, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: Colors.white60,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         subtitle: const Text(
           'Already Added',
@@ -195,7 +232,11 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
           ),
           child: const Text(
             'Added',
-            style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       );
@@ -204,17 +245,26 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
     return CheckboxListTile(
       secondary: CircleAvatar(
         radius: 20,
-        backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty && !avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
+        backgroundImage:
+            avatarUrl != null &&
+                avatarUrl.isNotEmpty &&
+                !avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
             ? NetworkImage(avatarUrl)
             : null,
         backgroundColor: Colors.grey[800],
-        child: avatarUrl == null || avatarUrl.isEmpty || avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
+        child:
+            avatarUrl == null ||
+                avatarUrl.isEmpty ||
+                avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
             ? const Icon(Icons.person, color: Colors.white)
             : null,
       ),
       title: Text(
         displayName,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       value: isSelected,
       onChanged: (bool? value) {
@@ -227,7 +277,7 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
         });
       },
       activeColor: AppTheme.accent,
-      checkColor: Colors.white,
+      checkColor: AppTheme.onAccent,
       controlAffinity: ListTileControlAffinity.trailing,
     );
   }
@@ -330,7 +380,10 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
             : Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
                     child: Row(
                       children: [
                         const Text(
@@ -342,8 +395,20 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
                           dropdownColor: AppTheme.surface,
                           value: _permission,
                           items: const [
-                            DropdownMenuItem(value: 'editor', child: Text('Editor', style: TextStyle(color: Colors.white))),
-                            DropdownMenuItem(value: 'viewer', child: Text('Viewer', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(
+                              value: 'editor',
+                              child: Text(
+                                'Editor',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'viewer',
+                              child: Text(
+                                'Viewer',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
                           ],
                           onChanged: (val) {
                             if (val != null) setState(() => _permission = val);
@@ -353,18 +418,29 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
                     child: TextField(
                       controller: _searchController,
                       onChanged: _onSearchChanged,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         hintText: 'Search people by name...',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                        prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                        hintStyle: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Colors.white54,
+                        ),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.white54),
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.white54,
+                                ),
                                 onPressed: () {
                                   _searchController.clear();
                                   _onSearchChanged('');
@@ -377,7 +453,10 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
                           borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -392,10 +471,12 @@ class _InvitePlaylistFriendsScreenState extends State<InvitePlaylistFriendsScree
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: _selectedCollaborators.isEmpty ? null : _sendInvites,
+                        onPressed: _selectedCollaborators.isEmpty
+                            ? null
+                            : _sendInvites,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.accent,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppTheme.onAccent,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(28),
                           ),

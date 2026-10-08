@@ -43,6 +43,15 @@ public class EventController {
         return ResponseEntity.ok(eventService.getAllPublicEvents(userId));
     }
 
+    @GetMapping("/nearby")
+    @Operation(summary = "Find active public events near a location")
+    public ResponseEntity<?> getNearbyEvents(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "1.0") double radiusKm) {
+        return ResponseEntity.ok(eventService.getNearbyEvents(lat, lng, radiusKm));
+    }
+
     @Operation(summary = "Détail d'un événement")
     @GetMapping("/{id}")
     public ResponseEntity<EventDto> getEventById(

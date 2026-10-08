@@ -98,7 +98,7 @@ class _AddToPlaylistModalState extends State<AddToPlaylistModal> {
             content: Text(
               success ? 'Track downloaded successfully!' : 'Failed to download track',
             ),
-            backgroundColor: success ? const Color(0xFF1DB954) : Colors.redAccent,
+            backgroundColor: success ? AppTheme.accent : AppTheme.danger,
           ),
         );
       }
@@ -113,7 +113,7 @@ class _AddToPlaylistModalState extends State<AddToPlaylistModal> {
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Please enter a playlist name'),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: AppTheme.danger,
         ),
       );
       return;
@@ -200,7 +200,7 @@ class _AddToPlaylistModalState extends State<AddToPlaylistModal> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF121212),
+        color: AppTheme.background,
         border: Border(
           top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
@@ -283,7 +283,7 @@ class _AddToPlaylistModalState extends State<AddToPlaylistModal> {
                             CircularProgressIndicator(
                               value: _downloadProgress,
                               strokeWidth: 3,
-                              color: const Color(0xFF1DB954),
+                              color: AppTheme.accent,
                               backgroundColor: Colors.white12,
                             ),
                             Text(
@@ -304,7 +304,7 @@ class _AddToPlaylistModalState extends State<AddToPlaylistModal> {
                               ? Icons.download_done_rounded
                               : Icons.download_rounded,
                           color: _isDownloaded
-                              ? const Color(0xFF1DB954)
+                              ? AppTheme.accent
                               : Colors.white70,
                           size: 20,
                         ),
@@ -312,7 +312,7 @@ class _AddToPlaylistModalState extends State<AddToPlaylistModal> {
                           _isDownloaded ? 'Saved' : 'Download',
                           style: TextStyle(
                             color: _isDownloaded
-                                ? const Color(0xFF1DB954)
+                                ? AppTheme.accent
                                 : Colors.white70,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -364,7 +364,7 @@ class _AddToPlaylistModalState extends State<AddToPlaylistModal> {
                 onPressed: _isSubmitting ? null : () async => _createAndAdd(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppTheme.onAccent,
                   elevation: 0,
                   minimumSize: const Size(104, 52),
                   shape: RoundedRectangleBorder(

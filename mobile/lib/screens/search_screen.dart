@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
-import '../widgets/category_card.dart';
 import '../services/audius_service.dart';
 import '../models/track_model.dart';
 import '../providers/audio_provider.dart';
+import '../widgets/acid/acid_section_header.dart';
+import '../widgets/acid/collection_card.dart';
+import '../widgets/acid/search_pill.dart';
+import '../widgets/acid/track_row.dart';
+import '../widgets/audio_player_overlay.dart';
 import '../widgets/add_to_playlist_modal.dart';
-import '../providers/user_profile_provider.dart';
-import 'profile/profile_screen.dart';
+import '../widgets/responsive_layout.dart';
+import 'home_screen.dart' show formatTrackDuration;
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -26,63 +30,63 @@ class _SearchScreenState extends State<SearchScreen> {
   final List<Map<String, dynamic>> _categories = const [
     {
       'title': 'Pop',
-      'color': Color(0xFFE8115B),
       'image':
-          'https://images.unsplash.com/photo-1520127877998-122c33e8eb38?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1520127877998-122c33e8eb38?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Hip-Hop',
-      'color': Color(0xFFBC5900),
       'image':
-          'https://images.unsplash.com/photo-1514525253344-f814d074e015?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Rock',
-      'color': Color(0xFFE91429),
       'image':
-          'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Jazz',
-      'color': Color(0xFF7D4B32),
       'image':
-          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Electronic',
-      'color': Color(0xFF477D95),
       'image':
-          'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Chill',
-      'color': Color(0xFFD84000),
       'image':
-          'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Party',
-      'color': Color(0xFF8D67AB),
       'image':
-          'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Workout',
-      'color': Color(0xFF777777),
       'image':
-          'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Focus',
-      'color': Color(0xFF503750),
       'image':
-          'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
     {
       'title': 'Mood',
-      'color': Color(0xFFE1118C),
       'image':
-          'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=400&fit=crop',
+      'artist': 'Playlist',
     },
   ];
 
@@ -115,9 +119,11 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Search failed: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Search failed: $e')));
+      }
     }
   }
 
@@ -129,259 +135,301 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        // ── Header ──────────────────────────────────────────────────────────
-        SliverAppBar(
-          floating: true,
-          pinned: true,
-          backgroundColor: AppTheme.background,
-          elevation: 0,
-          toolbarHeight: 80,
-          flexibleSpace: FlexibleSpaceBar(
-            background: Container(
-              padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
-              child: Row(
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      // Stacked overlay: this screen is pushed on top of MainScreen, which
+      // hides the shell's mini player — so it needs its own. Without this,
+      // tapping a result plays audio with zero visual feedback.
+      body: Stack(
+        children: [
+          CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // ── Back + title ────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 60, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Consumer<UserProfileProvider>(
-                    builder: (context, profileProvider, child) {
-                      final profile = profileProvider.profile;
-                      final avatarUrl = profile?.avatarUrl;
-
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ProfileScreen(),
-                            ),
-                          );
-                        },
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Colors.grey[800],
-                          backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty && !avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
-                              ? NetworkImage(avatarUrl)
-                              : null,
-                          child: avatarUrl == null || avatarUrl.isEmpty || avatarUrl.contains('photo-1535713875002-d1d0cf377fde')
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 18,
-                                  color: Colors.white70,
-                                )
-                              : null,
+                  if (Navigator.canPop(context))
+                    Semantics(
+                      button: true,
+                      label: 'Back',
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.surfaceRaised,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: AppTheme.textPrimary,
+                            size: 22,
+                          ),
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 16),
-                  const Text(
-                    'Search',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
+                      ),
                     ),
+                  if (Navigator.canPop(context))
+                    const SizedBox(height: 12),
+                  Text(
+                    'Recommended\nFor You Today',
+                    style: AppTheme.display.copyWith(fontSize: 30),
                   ),
                 ],
               ),
             ),
           ),
-        ),
 
-        // ── Search Bar ──────────────────────────────────────────────────────
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: _performSearch,
-              style: const TextStyle(color: Colors.black),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: 'What do you want to listen to?',
-                hintStyle: const TextStyle(
-                  color: Color(0xFF757575),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF121212),
-                  size: 28,
-                ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.black),
-                        onPressed: () {
-                          _searchController.clear();
-                          _performSearch('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-        ),
-
-        if (!_hasSearched) ...[
-
-          // ── Browse All Title ───────────────────────────────────────────────
-          const SliverToBoxAdapter(
+          // ── Search pill ───────────────────────────────────────────────
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 24, 16, 16),
-              child: Text(
-                'Browse all',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SearchPill(
+                controller: _searchController,
+                onSubmitted: _performSearch,
+                onClear: () {
+                  _searchController.clear();
+                  _performSearch('');
+                },
               ),
             ),
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-          // ── Categories Grid ─────────────────────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.6,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                return GestureDetector(
+          if (!_hasSearched) ...[
+            // ── Hero card (wide feature) ────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GestureDetector(
                   onTap: () {
-                    final title = _categories[index]['title'] as String;
+                    final title =
+                        _categories[1]['title'] as String;
                     _searchController.text = title;
                     _performSearch(title);
                   },
-                  child: CategoryCard(
-                    title: _categories[index]['title'] as String,
-                    color: _categories[index]['color'] as Color,
-                    imageUrl: _categories[index]['image'] as String,
+                  child: Container(
+                    height: 210,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLg),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLg),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            _categories[1]['image'] as String,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: AppTheme.surfaceRaised,
+                              child: const Icon(
+                                  Icons.music_note_rounded,
+                                  color: AppTheme.textSecondary,
+                                  size: 48),
+                            ),
+                          ),
+                          Container(
+                            decoration: const BoxDecoration(
+                                gradient: AppTheme.scrim),
+                          ),
+                          Positioned(
+                            left: 18,
+                            bottom: 16,
+                            child: Text(
+                              _categories[1]['title'] as String,
+                              style: AppTheme.titleLg.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                );
-              }, childCount: _categories.length),
-            ),
-          ),
-        ] else if (_isLoading) ...[
-          const SliverFillRemaining(
-            child: Center(
-              child: CircularProgressIndicator(color: Colors.green),
-            ),
-          ),
-        ] else if (_searchResults.isEmpty) ...[
-          const SliverFillRemaining(
-            child: Center(
-              child: Text(
-                'No results found',
-                style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
-          ),
-        ] else ...[
-          // ── Search Results ─────────────────────────────────────────────────
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final track = _searchResults[index];
-              return ListTile(
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: track.imageUrl != null && track.imageUrl!.isNotEmpty
-                      ? Image.network(
-                          track.imageUrl!,
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: Colors.grey[900],
-                                width: 50,
-                                height: 50,
-                                child: const Icon(
-                                  Icons.music_note,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                        )
-                      : Container(
-                          color: Colors.grey[900],
-                          width: 50,
-                          height: 50,
-                          child: const Icon(
-                            Icons.music_note,
-                            color: Colors.grey,
-                          ),
-                        ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+            // ── New Collection rail ─────────────────────────────────────
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: AcidSectionHeader(
+                  title: 'New Collection',
                 ),
-                title: Text(
-                  track.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  track.artistName,
-                  style: TextStyle(color: Colors.grey[400]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.grey),
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => AddToPlaylistModal(track: track),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 214,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final c = _categories[index];
+                    return Padding(
+                      padding:
+                          const EdgeInsets.only(right: 14),
+                      child: CollectionCard(
+                        title: c['title'] as String,
+                        artist: c['artist'] as String,
+                        imageUrl: c['image'] as String,
+                        onTap: () {
+                          _searchController.text =
+                              c['title'] as String;
+                          _performSearch(c['title'] as String);
+                        },
+                      ),
                     );
                   },
                 ),
-                onTap: () {
-                  if (track.audioUrl == null || track.audioUrl!.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'This track is not currently streamable on Audius.',
-                        ),
+              ),
+            ),
+
+            // ── Browse all grid ─────────────────────────────────────────
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 24, 20, 12),
+                child: AcidSectionHeader(title: 'Browse all'),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 170),
+              sliver: SliverGrid(
+                gridDelegate:
+                    SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: ResponsiveLayout.gridCrossAxisCount(context),
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 0.74,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final c = _categories[index];
+                    final size =
+                        (MediaQuery.of(context).size.width - 54) / 2;
+                    return CollectionCard(
+                      title: c['title'] as String,
+                      artist: c['artist'] as String,
+                      imageUrl: c['image'] as String,
+                      size: size,
+                      onTap: () {
+                        _searchController.text =
+                            c['title'] as String;
+                        _performSearch(c['title'] as String);
+                      },
+                    );
+                  },
+                  childCount: _categories.length,
+                ),
+              ),
+            ),
+          ] else if (_isLoading) ...[
+            const SliverFillRemaining(
+              child: Center(
+                child:
+                    CircularProgressIndicator(color: AppTheme.accent),
+              ),
+            ),
+          ] else if (_searchResults.isEmpty) ...[
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('No results found',
+                        style: AppTheme.titleMd),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        _performSearch('');
+                      },
+                      child: Text('Clear search',
+                          style: AppTheme.caption.copyWith(
+                              color: AppTheme.accent)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ] else ...[
+            // ── Search results as track rows ────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding:
+                    const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: Text(
+                  '${_searchResults.length} results',
+                  style: AppTheme.caption,
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding:
+                  const EdgeInsets.fromLTRB(20, 0, 20, 170),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final track = _searchResults[index];
+                    return TrackRow(
+                      title: track.title,
+                      artist: track.artistName,
+                      imageUrl: track.imageUrl,
+                      duration: formatTrackDuration(track),
+                      onTap: () {
+                        if (track.audioUrl == null ||
+                            track.audioUrl!.isEmpty) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'This track is not currently streamable on Audius.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        Provider.of<AudioProvider>(context,
+                                listen: false)
+                            .playTrack(
+                          track,
+                          playlist: _searchResults,
+                          index: index,
+                        );
+                      },
+                      onMore: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) =>
+                            AddToPlaylistModal(track: track),
                       ),
                     );
-                    return;
-                  }
-
-                  final audioProvider = Provider.of<AudioProvider>(
-                    context,
-                    listen: false,
-                  );
-                  audioProvider.playTrack(
-                    track,
-                    playlist: _searchResults,
-                    index: index,
-                  );
-                },
-              );
-            }, childCount: _searchResults.length),
-          ),
+                  },
+                  childCount: _searchResults.length,
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+          ),
+          const AudioPlayerOverlay(),
+        ],
+      ),
     );
   }
 }

@@ -25,19 +25,21 @@ class LibraryListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: SizedBox(
+        height: 64,
         child: Row(
           children: [
             // Image
             Container(
-              width: 64,
-              height: 64,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 shape: isCircular ? BoxShape.circle : BoxShape.rectangle,
-                borderRadius: isCircular ? null : BorderRadius.circular(4),
-                color: AppTheme.surface,
+                borderRadius: isCircular
+                    ? null
+                    : BorderRadius.circular(AppTheme.radiusSm),
+                color: AppTheme.surfaceRaised,
               ),
               clipBehavior: Clip.antiAlias,
               child: imageUrl != null
@@ -52,6 +54,7 @@ class LibraryListItem extends StatelessWidget {
             // Title & Subtitle
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -59,7 +62,7 @@ class LibraryListItem extends StatelessWidget {
                       if (isPrivate) ...[
                         const Icon(
                           Icons.lock_outline_rounded,
-                          color: Colors.redAccent,
+                          color: AppTheme.danger,
                           size: 14,
                         ),
                         const SizedBox(width: 4),
@@ -67,24 +70,17 @@ class LibraryListItem extends StatelessWidget {
                       Expanded(
                         child: Text(
                           title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppTheme.titleMd.copyWith(fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 14,
-                    ),
+                    style: AppTheme.caption.copyWith(fontSize: 14),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
